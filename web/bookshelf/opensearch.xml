@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>书架测试搜索</ShortName>
+  <Description>本地测试 OPDS OpenSearch</Description>
+  <Url type="application/atom+xml;profile=opds-catalog;kind=acquisition" template="/web/bookshelf/test-opds12-search.xml?q={searchTerms}"/>
+</OpenSearchDescription>

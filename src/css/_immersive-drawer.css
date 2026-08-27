@@ -1,0 +1,385 @@
+/* ===== S8.11c sessions drawer + story stage ===== */
+/* Session drawer usable on desktop during chat immersion (was mobile-only) */
+html[data-immersive="1"] #session-drawer:not(.hidden),
+#session-drawer:not(.hidden) {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-tooltip);
+}
+#session-drawer .drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+}
+#session-drawer .drawer-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 92vw);
+  max-width: 92vw;
+  background: var(--surface-1);
+  border-left: var(--sp-0h) solid rgba(212,168,83,.2);
+  box-shadow: -16px 0 48px rgba(0,0,0,.5);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-base);
+}
+#session-drawer .drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3h) var(--sp-4);
+  border-bottom: var(--sp-0h) solid var(--border);
+}
+#session-drawer .drawer-list {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-2h) var(--sp-3) var(--sp-5h);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+}
+#session-drawer .drawer-list .item {
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+#session-drawer .drawer-list .item.active {
+  border-color: rgba(212,168,83,.4);
+  background: rgba(212,168,83,.1);
+}
+#session-drawer .drawer-list .item .t { display: block; font-weight: 600; }
+#session-drawer .drawer-list .item .d { display: block; font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--sp-0h); }
+/* ===== Semantic memory events strip in sessions drawer ===== */
+#session-drawer .drawer-recall {
+  padding: var(--sp-2h) var(--sp-3);
+  border-bottom: var(--sp-0h) solid var(--border);
+  background: rgba(212,168,83,.05);
+}
+#session-drawer .drawer-recall-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1h);
+}
+#session-drawer .drawer-recall-head strong {
+  font-size: var(--fs-sm);
+  letter-spacing: .04em;
+  color: var(--warm-text);
+}
+#session-drawer .drawer-recall-list {
+  display: grid;
+  gap: var(--sp-1h);
+  max-height: 13rem;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+}
+/* ===== Semantic memory events strip in st-side drawer (mobile tavern 资料) ===== */
+/* Follows theme tokens so it adapts to day/night; compact for the narrow sidebar */
+.st-side .drawer-recall {
+  padding: var(--sp-2h) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--st-ember-weak);
+}
+.st-side .drawer-recall-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.st-side .drawer-recall-head strong {
+  font-size: var(--fs-sm);
+  letter-spacing: .04em;
+  color: var(--warm-text);
+}
+.st-side .drawer-recall-meta {
+  color: var(--text);
+  font-weight: 600;
+}
+.st-side .drawer-recall-list {
+  display: grid;
+  gap: var(--sp-2);
+  max-height: 13rem;
+  overflow-y: auto;
+  padding-right: var(--sp-1);
+}
+.st-side .drawer-recall .el-event {
+  padding: var(--sp-2h) var(--sp-3);
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+}
+.st-side .drawer-recall .el-event-rank {
+  color: var(--text);
+  font-weight: 700;
+}
+.st-side .drawer-recall .el-event-kind {
+  background: rgba(45,212,191,.14);
+  border: 1px solid rgba(45,212,191,.35);
+  color: var(--text);
+  font-weight: 600;
+}
+.st-side .drawer-recall .el-event-sum { color: var(--text); line-height: 1.4; }
+.st-side .drawer-recall .el-event-actor {
+  background: var(--st-ember-weak);
+  border-color: var(--st-ember-medium);
+  color: var(--text);
+  font-weight: 500;
+}
+.st-side .drawer-recall .el-event-badge {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.st-side .drawer-recall .el-event-badge.ok { color: var(--teal-light); }
+html[data-color-scheme="day"] .st-side .drawer-recall .el-event-badge.ok { color: #0f766e; }
+@media (max-width: 56.25rem) {
+  .st-side .drawer-recall { padding: var(--sp-2) var(--sp-2); }
+  .st-side .drawer-recall-head strong { font-size: var(--fs-xs); }
+  .st-side .drawer-recall-list { max-height: 10rem; }
+}
+html[data-immersive="1"] #chat-sessions-toggle:not(.hidden) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+/* story / adventure immersive fill */
+html[data-immersive="1"] #tab-story.tab-panel:not(.hidden),
+html[data-immersive="1"] #tab-adventure.tab-panel:not(.hidden) {
+  display: flex !important;
+  flex-direction: column;
+  height: calc(100dvh - 52px);
+  max-height: calc(100dvh - 52px);
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse 90% 50% at 50% -8%, rgba(212,168,83,.1), transparent 55%),
+    var(--bg);
+  box-shadow: none;
+}
+html[data-immersive="1"] #tab-story .layout,
+html[data-immersive="1"] #tab-adventure .layout {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] #tab-story .layout > aside,
+html[data-immersive="1"] #tab-adventure .layout > aside {
+  display: none !important;
+}
+html[data-immersive="1"] #tab-story .layout > main,
+html[data-immersive="1"] #tab-adventure .layout > main,
+html[data-immersive="1"] #tab-story .stage-panel,
+html[data-immersive="1"] #tab-adventure .stage-panel {
+  flex: 1;
+  min-height: 0;
+  max-width: 53.75rem;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] #story-messages,
+html[data-immersive="1"] #tab-adventure #story-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+html[data-immersive="1"] #story-composer,
+html[data-immersive="1"] #tab-adventure #story-composer {
+  flex-shrink: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: var(--sp-0h) solid rgba(212,168,83,.16);
+  background: rgba(8,9,13,.92);
+}
+
+
+/* ===== S8.11d stream atmosphere + author desk ===== */
+/* Streaming: static ember glow + caret — no per-token layout thrash.
+   S13h: 渐变底色与其他模式统一移除——streaming 时不再给正文加回
+   vignette 背景(此前 streaming 会让穿书/对话/跑团重新出现底色) */
+html[data-streaming="1"][data-immersive="1"] #st-messages,
+html[data-streaming="1"][data-immersive="1"] #messages,
+html[data-streaming="1"][data-immersive="1"] #story-messages {
+  background-image: none;
+}
+.bubble.is-streaming {
+  will-change: contents;
+  border-color: rgba(212,168,83,.42) !important;
+  box-shadow:
+    0 0 0 1px rgba(212,168,83,.12),
+    0 8px 28px rgba(0,0,0,.28);
+}
+.bubble.is-streaming .bubble-body::after {
+  content: '';
+  display: inline-block;
+  width: var(--sp-0h);
+  height: 1.05em;
+  margin-left: var(--sp-0q);
+  vertical-align: text-bottom;
+  background: rgba(253,230,138,.85);
+  border-radius: 0.0625rem;
+  animation: stCaret 1s steps(1) infinite;
+}
+@keyframes stCaret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble.is-streaming .bubble-body::after { animation: none; opacity: .7; }
+}
+
+/* Author zone immersive desk */
+html[data-immersive="1"] #tab-works.tab-panel:not(.hidden) {
+  display: flex !important;
+  flex-direction: column;
+  height: calc(100dvh - 52px);
+  max-height: calc(100dvh - 52px);
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse 80% 40% at 70% -5%, rgba(212,168,83,.08), transparent 55%),
+    var(--bg);
+  box-shadow: none;
+}
+html[data-immersive="1"] #tab-works .az-layout {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  background: transparent;
+}
+html[data-immersive="1"] #tab-works .az-project-pane,
+html[data-immersive="1"] #tab-works .az-composer-pane {
+  display: none;
+}
+/* S8.11e: 文稿抽屉 = 项目 + 组合器叠在左侧，书桌全宽 */
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open {
+  display: grid;
+  grid-template-columns: minmax(0, min(300px, 42vw)) minmax(0, 1fr);
+  grid-template-rows: minmax(140px, 38%) minmax(0, 1fr);
+  grid-template-areas:
+    "az-proj az-desk"
+    "az-comp az-desk";
+}
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-project-pane {
+  display: flex;
+  grid-area: az-proj;
+  border-right: var(--sp-0h) solid rgba(212,168,83,.16);
+  border-bottom: var(--sp-0h) solid rgba(212,168,83,.12);
+  box-shadow: 12px 0 40px rgba(0,0,0,.28);
+  z-index: var(--z-base);
+  max-height: none;
+}
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-composer-pane {
+  display: flex;
+  grid-area: az-comp;
+  border-right: var(--sp-0h) solid rgba(212,168,83,.16);
+  box-shadow: 12px 0 40px rgba(0,0,0,.28);
+  z-index: var(--z-base);
+  max-height: none;
+  overflow: auto;
+}
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-desk {
+  grid-area: az-desk;
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "az-desk";
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-composer-pane {
+  position: fixed;
+  left: 0;
+  width: min(90vw, 320px);
+  z-index: var(--z-sticky);
+  background: var(--surface-1);
+  box-shadow: 16px 0 48px rgba(0,0,0,.55);
+  border-right: var(--sp-0h) solid rgba(212,168,83,.18);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-project-pane { html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-composer-pane {
+  position: fixed;
+  left: 0;
+  width: min(90vw, 320px);
+  z-index: var(--z-sticky);
+  background: var(--surface-1);
+  box-shadow: 16px 0 48px rgba(0,0,0,.55);
+  border-right: var(--sp-0h) solid rgba(212,168,83,.18);
+} }
+}
+
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-project-pane {
+  top: 0;
+  height: 42%;
+  border-bottom: var(--sp-0h) solid rgba(212,168,83,.14);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works .az-layout.az-nav-open .az-composer-pane {
+  top: 42%;
+  bottom: 0;
+  height: auto;
+}
+}
+html[data-immersive="1"] #tab-works .az-desk {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+html[data-immersive="1"] #tab-works .works-layout {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+html[data-immersive="1"] #tab-works .works-editor-pane {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212,168,83,.06), transparent 45%),
+    var(--surface-0);
+}
+html[data-immersive="1"] #tab-works .works-toolbar {
+  border-bottom-color: rgba(212,168,83,.14);
+  background: rgba(8,9,13,.55);
+}
+html[data-immersive="1"] #works-nav-toggle:not(.hidden) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-works.tab-panel:not(.hidden) {
+  height: calc(100dvh - 48px - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 48px - env(safe-area-inset-bottom, 0px));
+}
+}
+/* focus strip slightly more narrative */
+html[data-immersive="1"] .st-focus-bar::before {
+  content: '出场';
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: rgba(253,230,138,.7);
+  margin-right: var(--sp-1);
+}
+
+/* S8.11f: never resurrect hidden tabs via immersive display:flex !important */
+.tab-panel.hidden {
+  display: none !important;
+}
+
+

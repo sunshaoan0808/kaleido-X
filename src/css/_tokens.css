@@ -1,0 +1,138 @@
+:root {
+  --bg: #08090d;
+  --surface-0: #0b0d12;
+  --surface-1: #0f1117;
+  --surface-2: #13161f;
+  --surface-3: #181b25;
+  --surface-4: #1e2230;
+  --surface-5: #252a3a;
+  --text: #f0f2f5;
+  --text-secondary: #94a3b8;
+  /* S8.16: was #64748b (~4.1 on surface-0) — fails AA on bnav/hint/placeholder */
+  --text-tertiary: #7d8ca3;
+  --accent: #d4a853;
+  --accent-2: #b78c3a;
+  --accent-glow: rgba(212,168,83,.32);
+  --accent2: var(--accent-2);
+  --err: #f87171;
+  --warn: #fbbf24;
+  /* S9.5: --text-inverse = 强调底上的反色文字。夜间金底上要浅字（was #07080c 深字，az-item.active 深字深底看不清），日间在 day 块覆盖为深字 */
+  --text-inverse: #f0f2f5;
+  --bg-black: #07080c;
+  --day-text: #3a342c;
+  --warm-text: #d4a853;
+  --gold-light: #fde68a;
+  --gold-pale: #fef3c7;
+  --teal: #2dd4bf;
+  --teal-light: #99f6e4;
+  --rose: #f87171;
+  --rose-light: #fecaca;
+  --link: #58a6ff;
+  --near-white: #f8f6f0;
+  --cream: #f5e6c8;
+  --border: rgba(255,255,255,.08);
+  --border-strong: rgba(255,255,255,.14);
+  --user: rgba(212,168,83,.14);
+  --agent: rgba(120,150,170,.10);
+  --shadow: 0 24px 80px rgba(0,0,0,.45);
+  --shadow-sm: 0 4px 16px rgba(0,0,0,.25);
+  --radius-xs: 4px;
+  --radius-sm: 10px;
+  --radius-md: 8px;
+  --radius: 14px;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+  /* Z-index tokens */
+  --z-below: -1;
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-tooltip: 500;
+  --z-overlay: 10000;
+  --transition: 160ms cubic-bezier(.4, 0, .2, 1);
+
+  /* Story Tavern Phase-2 tokens */
+  --st-ember: #d4a853;
+  --st-ember-weak: rgba(212,168,83,.12);
+  --st-ember-medium: rgba(212,168,83,.28);
+  --st-warm-glow: rgba(212,168,83,.06);
+  --st-ink: #07080c;
+  --st-stage-vignette: radial-gradient(ellipse at 50% 0%, rgba(212,168,83,.07), transparent 55%);
+  --st-pop: cubic-bezier(.16, 1, .3, 1);
+  /*
+   * Font stack (S8.9): installed CJK first on this Linux host (WenQuanYi / Droid).
+   * PingFang / YaHei remain later for real Apple/Windows clients.
+   */
+  --font-ui: "WenQuanYi Zen Hei", "Droid Sans Fallback",
+    "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Roomier CJK type scale */
+  --fs-xs: .75rem;      /* ~12px meta */
+  --fs-sm: .8125rem;    /* ~13px secondary */
+  --fs-md: .875rem;     /* ~14px chrome */
+  --fs-base: .9375rem;  /* ~15px body */
+  --fs-lg: 1.0625rem;   /* ~17px */
+  --fs-xl: 1.2rem;
+  --fs-2xl: 1.45rem;
+  --fs-display: 2rem;
+
+  --sp-0: 0;
+  --sp-0h: 0.125rem; /* 2px */
+  --sp-1: 0.25rem; /* 4px */
+  --sp-1h: 0.375rem; /* 6px */
+  --sp-2: 0.5rem; /* 8px */
+  --sp-2h: 0.625rem; /* 10px */
+  --sp-3: 0.75rem; /* 12px */
+  --sp-3h: 0.875rem; /* 14px */
+  --sp-4: 1rem; /* 16px */
+  --sp-4h: 1.125rem; /* 18px */
+  --sp-5: 1.5rem; /* 24px */
+  --sp-6: 1.75rem; /* 28px */
+  --sp-8: 2rem; /* 32px */
+  --sp-5h: 1.25rem; /* 20px */
+  --sp-6h: 1.375rem; /* 22px */
+  --sp-7: 1.625rem; /* 26px */
+  --sp-0q: 0.1875rem; /* 3px */
+  --sp-1q: 0.3125rem; /* 5px */
+  --sp-1t: 0.4375rem; /* 7px */
+  --sp-2q: 0.5625rem; /* 9px */
+  --sp-2t: 0.6875rem; /* 11px */
+  --sp-3q: 0.8125rem; /* 13px */
+  --lh-tight: 1.35;
+  --lh-ui: 1.5;
+  --lh-body: 1.65;
+  --tracking-ui: 0;
+  --tracking-tight: 0;
+  --tracking-display: 0;
+  --wall-blur: 0px;
+  --wall-op: 0.35;
+  --wall-overlay: rgba(0, 0, 0, 0.16);
+  --wallpaper-image: none;
+  font-family: var(--font-ui);
+}
+
+/* ── Toast system ── */
+/* S9.0 canonical design tokens (migrated from old web/styles.css).
+   M7: must live on :root — previously nested inside #toast-container,
+   where `top: --ok:` was invalid and dropped, and the tokens became
+   container-local instead of global. JS (toast.js) inlines all
+   #toast-container positioning, so the old rule is dead code. */
+:root {
+  --ok: #5eead4;
+  --ok-2: #99f6e4;
+  --info: #58a6ff;
+  --danger: #fb7185;
+  --on-accent: #1c1914;
+  --gold-strong: #fde68a;
+  --gold-deep: #b8892d;
+  --gold-dark: #9a7020;
+  --ink-deep: #07080c;
+  --paper: #f5f0e6;
+  --paper-warm: #faf6ee;
+  --paper-line: #ddd1bc;
+  --paper-ink: #3a342c;
+  --paper-muted: #6b6152;
+}

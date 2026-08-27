@@ -1,0 +1,303 @@
+/* Kaleido main.css — CSS module aggregator (S9.23) */
+/* All styles split into 35 modules — esbuild inlines @import at build time */
+
+@import "./_tokens.css";
+@import "./_base-reset.css";
+@import "./_base-typography.css";
+@import "./_base-login.css";
+@import "./_base-shell.css";
+@import "./_search.css";
+@import "./_chat-core.css";
+@import "./_partner.css";
+@import "./_works.css";
+@import "./_author-zone.css";
+@import "./_analysis.css";
+@import "./_works-preview.css";
+@import "./_settings.css";
+@import "./_mobile-ui.css";
+@import "./_desk.css";
+@import "./_tavern-layout.css";
+@import "./_tavern-stage.css";
+@import "./_tavern-msgs.css";
+@import "./_tavern-list.css";
+@import "./_tavern-detail.css";
+@import "./_tavern-editor.css";
+@import "./_tavern-misc.css";
+@import "./_embed-lab.css";
+@import "./_recall.css";
+@import "./_appearance.css";
+@import "./_desk-polish.css";
+@import "./_mobile-density.css";
+@import "./_immersive-base.css";
+@import "./_immersive-drawer.css";
+@import "./_immersive-chrome.css";
+@import "./_immersive-stage.css";
+@import "./_immersive-input.css";
+@import "./_immersive-read.css";
+@import "./_immersive-compose.css";
+@import "./_components.css";
+@import "./_dialog.css";
+@import "./_chat-reset.css";
+@import "./_u10-images.css";
+@import "./_dual-agent.css";
+@import "./_breakpoints.css";
+
+
+/* ============ P8: Realtime task center ============ */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.nav-badge.hidden { display: none; }
+
+.jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.jobs-card {
+  padding: 10px 12px;
+  border: 1px solid var(--border, rgba(127,127,127,.25));
+  border-radius: 10px;
+  background: rgba(127,127,127,.06);
+}
+.jobs-card.active {
+  border-color: rgba(59,130,246,.45);
+  background: rgba(59,130,246,.06);
+}
+.jobs-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.jobs-card-head code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--muted, #8a8f98);
+}
+.jobs-status {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
+  background: rgba(127,127,127,.18);
+  color: var(--muted, #8a8f98);
+}
+.jobs-status.running, .jobs-status.queued, .jobs-status.pending {
+  background: rgba(59,130,246,.18);
+  color: #3b82f6;
+}
+.jobs-status.succeeded, .jobs-status.completed, .jobs-status.done {
+  background: rgba(34,197,94,.18);
+  color: #22c55e;
+}
+.jobs-status.failed, .jobs-status.error {
+  background: rgba(239,68,68,.18);
+  color: #ef4444;
+}
+.jobs-status.cancelled, .jobs-status.stopped {
+  background: rgba(245,158,11,.18);
+  color: #f59e0b;
+}
+.jobs-card-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted, #8a8f98);
+  word-break: break-word;
+}
+.progress-track {
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgba(127,127,127,.18);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #22d3ee);
+  transform-origin: left center;
+  transform: scaleX(var(--progress-fill-x, 0));
+  transition: transform .6s cubic-bezier(.4, 0, .2, 1);
+}
+.jobs-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.jobs-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ---------- S3c 检定卡（吞噬 denova：前端检定弹窗） ----------
+   消息正文中的【检定结果】块由 _chat-part.js 渲染成该卡片，
+   骰面 / DC / 成败徽章 / 结果文本。 */
+.st-check-card {
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, rgba(127,127,127,.28));
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(212,168,83,.10), rgba(88,166,255,.05));
+  font-size: 13px;
+  line-height: 1.55;
+  animation: stCheckPop .5s var(--st-pop, ease) both;
+}
+.st-check-card.is-streaming { animation: none; }
+.st-check-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.st-check-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: var(--st-ember, #d4a853);
+}
+.st-check-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.st-check-total {
+  font-family: var(--st-dice-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text, #f0f2f5);
+  line-height: 1;
+}
+.st-check-dc {
+  margin-left: auto;
+  font-family: var(--st-dice-font, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-tertiary, #7d8ca3);
+}
+.st-check-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  background: var(--surface-3, #181b25);
+  border: 1px solid var(--border, rgba(127,127,127,.25));
+  color: var(--text-secondary, #94a3b8);
+}
+[data-color-scheme="day"] .st-check-badge { background: rgba(8,8,12,.05); }
+.st-check-badge.success { background: rgba(34,197,94,.18); color: #22c55e; border-color: rgba(34,197,94,.4); }
+.st-check-badge.failure { background: rgba(239,68,68,.18); color: #ef4444; border-color: rgba(239,68,68,.4); }
+.st-check-badge.critsuccess { background: linear-gradient(135deg, rgba(212,168,83,.25), rgba(245,158,11,.15)); color: #fbbf24; border-color: rgba(212,168,83,.5); }
+.st-check-badge.critfailure { background: linear-gradient(135deg, rgba(239,68,68,.28), rgba(148,16,16,.18)); color: #f87171; border-color: rgba(239,68,68,.55); }
+.st-check-sub {
+  margin-top: 6px;
+  color: var(--text-tertiary, #7d8ca3);
+  font-size: 12px;
+  letter-spacing: .4px;
+}
+.st-check-result {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border, rgba(127,127,127,.32));
+  color: var(--text, #f0f2f5);
+  opacity: .92;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+@keyframes stCheckPop {
+  0% { opacity: 0; transform: translateY(8px) scale(.94); }
+  100% { opacity: 1; transform: none; }
+}
+/* ── MoA 模型对比面板（T8）── */
+.moa-panel-item { border: 1px solid var(--border, rgba(127,127,127,.32)); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: rgba(127,127,127,.06); }
+.moa-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.moa-panel-head b { font-size: 14px; }
+.moa-panel-head .muted { margin-left: auto; }
+.moa-eps { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.moa-ep { background: rgba(127,127,127,.12); border: 1px solid rgba(127,127,127,.25); border-radius: 6px; padding: 2px 8px; font-size: 12px; }
+.moa-ep code { font-size: 11px; opacity: .8; }
+.moa-ep-row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.moa-ep-row input { flex: 1; min-width: 90px; }
+.moa-ep-row .moa-ep-id { max-width: 90px; }
+.moa-query { margin: 6px 0 8px; padding: 6px 10px; background: rgba(127,127,127,.08); border-radius: 8px; font-size: 12px; opacity: .9; white-space: pre-wrap; word-break: break-word; }
+.moa-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.moa-table th, .moa-table td { border: 1px solid rgba(127,127,127,.22); padding: 6px 8px; text-align: left; vertical-align: top; }
+.moa-table th { background: rgba(127,127,127,.1); }
+.moa-text { white-space: pre-wrap; word-break: break-word; }
+.moa-err { color: #f87171; white-space: pre-wrap; word-break: break-word; }
+.moa-hist-item { padding: 4px 0; border-bottom: 1px dashed rgba(127,127,127,.18); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+
+.moa-agg { margin: 8px 0 12px; border: 1px solid rgba(74,222,128,.4); border-radius: 10px; background: rgba(74,222,128,.06); overflow: hidden; }
+.moa-agg-head { padding: 8px 12px; font-weight: 600; background: rgba(74,222,128,.12); display: flex; align-items: center; gap: 8px; }
+.moa-agg-body { padding: 10px 12px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.moa-agg-err { border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.06); }
+.moa-agg-err .moa-agg-head { background: rgba(248,113,113,.12); }
+
+/* === HARNESS_UX additions === */
+.term-help {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.1rem; height: 1.1rem; margin-left: .25rem;
+  border-radius: 50%; border: 1px solid rgba(127,127,127,.4);
+  background: rgba(127,127,127,.12); color: inherit;
+  font-size: .7rem; line-height: 1; cursor: help; padding: 0;
+  vertical-align: middle;
+}
+.term-help:hover { background: rgba(212,168,83,.22); border-color: var(--accent); }
+
+.home-badge {
+  display: inline-block; margin-left: .4rem;
+  font-size: .65rem; padding: 1px 6px; border-radius: 8px;
+  background: rgba(74,222,128,.16); color: #6ee7a0;
+  border: 1px solid rgba(74,222,128,.32); vertical-align: middle;
+}
+.home-card-demo { border: 1px solid rgba(212,168,83,.4); }
+.home-card-demo:hover { border-color: var(--accent); }
+
+.home-recent-empty { padding: var(--sp-3) 0; text-align: center; }
+
+.chat-setup-empty {
+  margin: var(--sp-2) 0; padding: var(--sp-2h) var(--sp-3);
+  background: rgba(127,127,127,.08); border-radius: 10px;
+  border: 1px dashed rgba(127,127,127,.3);
+}
+
+.tag-badge { font-size: .7rem; padding: 1px 8px; border-radius: 8px; vertical-align: middle; margin-left: .4rem; }
+.tag-preview { background: rgba(212,168,83,.16); color: var(--accent); border: 1px solid rgba(212,168,83,.34); }
+
+.sheet-divider { border: none; border-top: 1px solid rgba(127,127,127,.2); margin: var(--sp-2) 0; }
+.sheet-section-title.muted { opacity: .7; }
+
+.st-p-tag {
+  font-size: .65rem; padding: 1px 6px; border-radius: 6px;
+  background: rgba(127,127,127,.18); color: inherit;
+  margin-left: .3rem; vertical-align: middle;
+}
+
+.st-pack-retry-btn { margin-top: var(--sp-2); }
+.st-pack-retry { display: block; margin-top: var(--sp-1); cursor: pointer; }
+.st-pack-loading-text { display: block; }

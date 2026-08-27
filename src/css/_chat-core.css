@@ -1,0 +1,187 @@
+/* Chat */
+.chat-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-2h) var(--sp-4h);
+  border-bottom: var(--sp-0h) solid var(--border);
+  background: rgba(0,0,0,.10);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.chat-toolbar > label.inline {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+#messages {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-4h);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3h);
+}
+
+#story-messages {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-4h);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3h);
+}
+#story-messages.stage-messages {
+  /* S13h: 与冒险统一——正文无底色/无卡片(去掉 vignette 渐变+surface 背景) */
+  min-height: 10rem;
+}
+
+.story-mode-bar {
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.chat-toolbar.story-mode-bar > label.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-md);
+  white-space: nowrap; /* 特异性 (0,3,1) 压过 .chat-toolbar > label.inline 的 normal(0,2,1)，防止"说话"被压成"说/话"竖排 */
+}
+.story-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4h) var(--sp-2h);
+}
+.story-choices:empty { display: none; }
+.story-choice {
+  border: 1px solid rgba(212,168,83,.35);
+  background: rgba(212,168,83,.10);
+  color: var(--warm-text);
+  border-radius: var(--radius-full);
+  padding: var(--sp-1h) var(--sp-3);
+  cursor: pointer;
+  font-size: var(--fs-md);
+}
+.story-choice:hover {
+  background: rgba(212,168,83,.22);
+}
+.bubble {
+  max-width: min(760px, 88%);
+  padding: var(--sp-3) var(--sp-4);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  position: relative;
+  /* no default enter animation — streaming deltas used to re-pop every token */
+}
+.bubble.is-enter {
+  animation: popIn 180ms ease both;
+}
+.bubble.is-streaming {
+  /* keep layout stable while tokens append */
+  will-change: contents;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bubble .bubble-body {
+  display: block;
+}
+.bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(212,168,83,.16), rgba(183,140,58,.10));
+  border-color: rgba(212,168,83,.35);
+  border-radius: var(--radius) var(--radius) 4px var(--radius);
+  color: var(--text);
+}
+.bubble.agent {
+  align-self: flex-start;
+  background: linear-gradient(135deg, rgba(45,212,191,.10), rgba(212,168,83,.05));
+  border-color: rgba(45,212,191,.25);
+  border-radius: var(--radius) var(--radius) var(--radius) 4px;
+}
+.bubble .role {
+  display: block;
+  font-size: var(--fs-xs, .72rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-1q);
+}
+.bubble.user .role { color: rgba(199,210,254,.85); }
+.bubble.agent .role { color: rgba(153,246,228,.85); }
+
+/* ST-10 群聊：agent 气泡内「角色名：内容」段发言人 chip */
+.bubble.agent .st-para.st-speaker {
+  text-indent: 0;
+  margin-top: var(--sp-2);
+}
+.bubble.agent .st-para.st-speaker:first-child {
+  margin-top: 0;
+}
+.st-speaker-name {
+  display: inline-block;
+  font-size: var(--fs-xs, .72rem);
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--accent, #d4a853);
+  background: var(--accent-glow, rgba(212,168,83,.16));
+  border: 1px solid color-mix(in srgb, var(--accent, #d4a853) 45%, transparent);
+  border-radius: var(--radius-sm, 6px);
+  padding: 1px var(--sp-1h);
+  margin-right: var(--sp-1h);
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* P2-1: 角色情绪表情角标（气泡 role 名右侧；无情绪时元素不存在） */
+.st-emotion-badge {
+  display: inline-block;
+  font-size: 1.05em;
+  line-height: 1;
+  margin-left: .35em;
+  vertical-align: baseline;
+  transform: translateY(.08em);
+  text-shadow: 0 0 8px rgba(255, 90, 90, .35);
+  font-family: "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", emoji, sans-serif;
+}
+
+#composer,
+#story-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-3);
+  padding: var(--sp-3h) var(--sp-4h) var(--sp-4h);
+  border-top: var(--sp-0h) solid var(--border);
+  background: rgba(11,13,18,.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+#composer textarea,
+#story-composer textarea {
+  resize: none;
+  min-height: 3.25rem;
+  max-height: 11.25rem;
+  background: var(--surface-0);
+  border-radius: var(--radius);
+  padding: var(--sp-3q) var(--sp-4);
+}
+.composer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+}
+.composer-actions button {
+  margin: 0;
+  width: auto;
+  min-width: 4.75rem;
+}

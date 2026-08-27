@@ -1,0 +1,513 @@
+/* ===== P1.1: Unified empty-state component ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2h);
+  padding: 2.5rem var(--sp-5h);
+  text-align: center;
+  color: var(--text-tertiary);
+  min-height: 11.25rem;
+  opacity: 0;
+  animation: fadeIn 300ms ease forwards;
+}
+.empty-state svg {
+  opacity: .45;
+  width: 3rem;
+  height: 3rem;
+}
+.empty-state .es-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.empty-state .es-sub {
+  font-size: var(--fs-sm);
+  max-width: 20rem;
+  line-height: 1.5;
+}
+.empty-state .es-cta {
+  margin-top: var(--sp-1h);
+  padding: var(--sp-2) var(--sp-5h);
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: opacity .15s ease;
+}
+.empty-state .es-cta:hover { opacity: .85; }
+
+/* P1.1: data-empty support for #messages and #session-list */
+#messages[data-empty]:empty::before,
+#session-list[data-empty]:empty::before {
+  content: attr(data-empty);
+  display: block;
+  padding: var(--sp-6) var(--sp-4h);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-md);
+  font-style: italic;
+}
+
+/* P1.2: Button component resets — eliminates !important cascade */
+.ui-mode-btn {
+  all: unset;
+  cursor: pointer;
+  min-width: var(--sp-6);
+  min-height: var(--sp-6);
+  border-radius: var(--radius-full);
+  padding: 0 var(--sp-2);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  overflow: visible;
+}
+.ui-mode-btn::after { display: none; }
+.ui-mode-btn.active {
+  background: linear-gradient(135deg, rgba(212,168,83,.28), rgba(183,140,58,.22));
+  color: var(--text-inverse);
+  box-shadow: 0 0 12px rgba(212,168,83,.25);
+}
+.ui-mode-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--surface-3);
+}
+@media (max-width: 56.25rem) {
+  .bnav { 
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--sp-1) var(--sp-0h);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  gap: var(--sp-0h);
+  font-weight: 500;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  overflow: visible;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+ }
+}
+@media (max-width: 56.25rem) {
+  .bnav::after {  display: none;  }
+}
+@media (max-width: 56.25rem) {
+  .bnav.active { 
+  color: var(--gold-light, #fde68a);
+  background: linear-gradient(180deg, rgba(212,168,83,.22), rgba(212,168,83,.08));
+  box-shadow: inset 0 0 0 1px rgba(212,168,83,.28);
+ }
+}
+@media (max-width: 56.25rem) {
+  .bnav.active-tools { 
+  color: var(--teal-light, #99f6e4);
+  background: linear-gradient(180deg, rgba(45,212,191,.18), rgba(45,212,191,.06));
+  box-shadow: inset 0 0 0 1px rgba(45,212,191,.28);
+ }
+}
+
+/* P2.4: Utility classes for extracted inline styles */
+.mt-2 { margin-top: var(--sp-2); }
+.mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+
+/* inline style 迁移（P2） */
+.crawl-meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+.st-continue-body { flex: 1 1 200px; min-width: 0; }
+.shelf-sched-row { margin-top: var(--sp-2); align-items: flex-end; }
+.ml-auto { margin-left: auto; }
+.gap-xs { gap: var(--sp-0h); }
+.gap-sm-half { gap: var(--sp-2); }
+.grid-meta { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-0h) var(--sp-3); }
+.flex-1 { flex: 1; }
+.align-start { align-items: flex-start; }
+.align-end { align-items: flex-end; }
+.w-88 { width: 5.5rem; }
+.w-220 { min-width: 13.75rem; }
+
+/* P2.4: Component classes for extracted inline styles */
+.crawl-cover { width: 2.5rem; height: 3.5rem; border-radius: var(--radius-xs); object-fit: cover; }
+.crawl-abstract { margin-top: var(--sp-0h); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 25rem; }
+.align-self-center { align-self: center; }
+.align-center { align-items: center; }
+.glob-no-result { opacity: .4; cursor: default; padding: var(--sp-3h) var(--sp-4); font-size: var(--fs-sm); }
+
+/* P3.4: Enhanced focus styles for keyboard navigation */
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex="0"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* High contrast focus for dark mode */
+html[data-color-scheme="dark"] button:focus-visible,
+html[data-color-scheme="dark"] [role="button"]:focus-visible,
+html[data-color-scheme="dark"] [tabindex="0"]:focus-visible {
+  outline-color: var(--gold-light);
+  box-shadow: 0 0 0 4px rgba(253,230,138,.3);
+}
+
+/* Focus ring for interactive cards */
+.home-card:focus-visible,
+.az-card:focus-visible,
+.st-entry-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(212,168,83,.2);
+}
+
+/* Focus for navigation items */
+.bnav:focus-visible,
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Focus for form elements */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Focus for ghost buttons */
+.ghost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: rgba(212,168,83,.1);
+}
+
+/* Focus for sheet items */
+.sheet-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: rgba(212,168,83,.15);
+}
+
+/* Focus for item lists */
+.item-list .item:focus-visible,
+aside .item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: rgba(212,168,83,.1);
+}
+
+/* Focus for file labels */
+.file-label:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* P3.3: Animation improvements */
+/* Smooth transitions for interactive elements */
+button,
+[role="button"],
+[tabindex="0"],
+.tab,
+.bnav,
+.sheet-item,
+.item-list .item,
+aside .item {
+  transition: transform var(--transition), box-shadow var(--transition),
+    filter var(--transition), background-color var(--transition),
+    color var(--transition), border-color var(--transition),
+    opacity var(--transition);
+}
+
+/* Hover effects for interactive elements */
+button:hover,
+[role="button"]:hover,
+[tabindex="0"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+/* Active state */
+button:active,
+[role="button"]:active,
+[tabindex="0"]:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Loading animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  animation: spin 1s linear infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Slide in animation */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Pulse animation for notifications */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* P4.3: Lazy loading styles */
+img[loading="lazy"] {
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+img[loading="lazy"].loaded {
+  opacity: 1;
+}
+
+/* Skeleton loading for images */
+.img-skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Performance optimizations */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* Reduce paint complexity */
+.contain-layout {
+  contain: layout style;
+}
+
+.contain-content {
+  contain: content;
+}
+
+/* Optimize scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* GPU acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* P4.4: UX improvements */
+/* Better loading states */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Better error states */
+.error-container {
+  padding: var(--sp-5);
+  background: rgba(248,113,113,.1);
+  border: 1px solid rgba(248,113,113,.3);
+  border-radius: var(--radius);
+  color: var(--err);
+}
+
+.error-container h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-lg);
+}
+
+.error-container p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  opacity: 0.8;
+}
+
+/* Success states */
+.success-container {
+  padding: var(--sp-5);
+  background: rgba(45,212,191,.1);
+  border: 1px solid rgba(45,212,191,.3);
+  border-radius: var(--radius);
+  color: var(--teal);
+}
+
+/* Empty state improvements */
+.empty-state-large {
+  padding: 3rem var(--sp-8);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state-large .icon {
+  font-size: calc(var(--fs-display) + 1rem);
+  margin-bottom: var(--sp-4);
+  opacity: 0.5;
+}
+
+.empty-state-large h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-lg);
+  color: var(--text);
+}
+
+.empty-state-large p {
+  margin: 0 0 var(--sp-5);
+  font-size: var(--fs-sm);
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Tooltip improvements */
+.tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--surface-4);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+  z-index: 1000;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+}
+
+/* Confirmation dialogs */
+.confirm-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: var(--sp-8);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 1001;
+  max-width: 400px;
+  width: 90%;
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-lg);
+}
+
+.confirm-dialog p {
+  margin: 0 0 var(--sp-5);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.confirm-dialog .actions {
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: flex-end;
+}
+
+.confirm-dialog .actions button {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+}
+
+.confirm-dialog .actions .cancel {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.confirm-dialog .actions .confirm {
+  background: var(--accent);
+  color: var(--bg);
+}
+

@@ -1,0 +1,26 @@
+# Kaleido Embedding Proxy — systemd service
+# Install: cp kaleido-embed-proxy.service /etc/systemd/system/
+#          systemctl daemon-reload && systemctl enable --now kaleido-embed-proxy
+
+[Unit]
+Description=Kaleido Embedding Proxy (BGE semantic search)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${REPO:-.}
+Environment=EMBED_PROXY_LISTEN=127.0.0.1:20145
+Environment=EMBED_PROXY_MODEL=BAAI/bge-small-zh-v1.5
+ExecStart=${REPO:-.}/.venv-embed/bin/python3 ${REPO:-.}/scripts/embed-proxy.py
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,36 @@
+{
+  "name": "kaleido",
+  "version": "1.0.0",
+  "description": "Kaleido — a self-hosted Story Tavern + Chat server (Rust backend + SPA frontend).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build:vite": "vite build && node scripts/stamp-html.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunshaoan0808/kaleido.git"
+  },
+  "keywords": [
+    "story",
+    "tavern",
+    "chat",
+    "rust",
+    "axum",
+    "self-hosted"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sunshaoan0808/kaleido/issues"
+  },
+  "homepage": "https://github.com/sunshaoan0808/kaleido#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "mammoth": "^1.12.0",
+    "vite": "^5.4.21"
+  }
+}

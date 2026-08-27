@@ -1,0 +1,172 @@
+/* Messages */
+.st-messages {
+  flex: 1; overflow: auto;
+  padding: var(--sp-5h) var(--sp-7);
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+/* enter anim only when .is-enter — never on streaming token patches */
+.st-bubble.is-enter { animation: popIn 220ms var(--st-pop) both; }
+
+/* Option chips — warm ember accent */
+.st-options {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2h);
+  padding: 0 var(--sp-7) var(--sp-3h);
+}
+.st-options:empty, .st-options.is-empty { display: none; }
+.st-options:not(:empty):not(.is-empty) { display: flex; }
+.st-option-chip {
+  width: auto; margin: 0; min-width: auto;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--st-ember-medium);
+  background: var(--st-ember-weak);
+  color: var(--gold-pale);
+  border-radius: var(--radius-full); font-size: var(--fs-md); font-weight: 500;
+  transition: background .16s, transform .16s, box-shadow .16s;
+}
+.st-option-chip:hover {
+  background: var(--st-ember-medium);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(212,168,83,.12);
+}
+.st-option-chip:active { transform: translateY(0); }
+
+/* Composer */
+.st-composer {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+  padding: var(--sp-3h) var(--sp-7) var(--sp-4h);
+  border-top: var(--sp-0h) solid var(--border);
+  background: rgba(11,13,18,.78);
+  backdrop-filter: blur(16px);
+  min-width: 0;
+  max-width: 100%;
+}
+.st-composer textarea {
+  resize: none; min-height: 3.375rem; max-height: 12.5rem;
+  border-radius: var(--radius);
+  padding: var(--sp-3h) var(--sp-4);
+  line-height: 1.45;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.st-composer .composer-actions button[type="submit"] {
+  background: linear-gradient(135deg, var(--st-ember), var(--accent-2));
+  color: #1a1206; border: 0;
+}
+.st-composer .composer-actions button[type="submit"]:hover {
+  filter: brightness(1.08);
+}
+.st-composer .composer-actions button[type="submit"]:disabled {
+  opacity: .55; filter: none; cursor: not-allowed;
+}
+
+/* Mode toggle — segmented control */
+.st-mode-toggle {
+  display: flex; gap: 0;
+  margin-right: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(0,0,0,.22);
+}
+.st-mode-btn {
+  width: auto; min-width: auto; margin: 0;
+  padding: var(--sp-1h) var(--sp-3h); border: 0; border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary); font-size: var(--fs-sm);
+  transition: background .16s, color .16s;
+}
+.st-mode-btn.active {
+  background: var(--st-ember-medium);
+  color: var(--text-inverse);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+}
+.st-mode-btn:hover { background: rgba(255,255,255,.06); }
+.st-mode-btn.active:hover { background: var(--st-ember-medium); }
+
+/* Side branch picker — S8.29: raise above #st-messages so clicks/slides
+   inside the panel don't fall through to the story text */
+.st-side-panel {
+  margin: 0 var(--sp-7) var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(0,0,0,.28);
+  backdrop-filter: blur(8px);
+  max-height: 42vh;
+  overflow: auto;
+  position: relative;
+  z-index: var(--z-popover, 100);
+}
+/* S8.29: immersive reparented overlay — absolutely position within
+   #st-view-play (relative), so it floats over the messages and is tappable */
+html[data-immersive="1"] #st-side-panel.st-side-float {
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: 0;
+  margin: 0;
+  z-index: var(--z-popover, 100);
+}
+.st-side-panel.hidden { display: none; }
+.st-side-panel-inner { padding: var(--sp-3h) var(--sp-4) var(--sp-4); }
+.st-side-panel-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3);
+  margin-bottom: var(--sp-2h);
+}
+.st-side-panel-head h3 { margin: 0; font-size: var(--fs-md); }
+.st-side-novel-summary {
+  white-space: pre-wrap;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  margin-bottom: var(--sp-3);
+  max-height: 8.75rem;
+  overflow: auto;
+}
+.st-side-node-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.st-side-node-card {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  text-align: left;
+  width: 100%;
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+  color: inherit;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.st-side-node-card:hover {
+  background: rgba(255,255,255,.07);
+  border-color: var(--st-ember-medium, #c45c26);
+}
+.st-side-node-card .t { font-weight: 600; font-size: var(--fs-sm); }
+.st-side-node-card .d { font-size: var(--fs-xs, 12px); color: var(--text-secondary); }
+.st-side-node-card .reason {
+  display: inline-block;
+  margin-top: var(--sp-0h);
+  font-size: var(--fs-xs);
+  padding: var(--sp-0h) var(--sp-2);
+  border-radius: var(--radius-full);
+  background: rgba(196,92,38,.18);
+  color: #ffd0b0;
+  width: fit-content;
+}
+
+/* 消息流内嵌程序卡（吸收自梨园 show_html）：沙箱 iframe 渲染的交互界面 */
+.st-program { margin: 16px 0 20px; }
+.st-program iframe {
+  width: 100%;
+  min-height: 100px;
+  max-height: 680px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface-2, #f5f0e8);
+}

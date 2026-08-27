@@ -1,0 +1,618 @@
+/* ===== S8.25 history fold + read position ===== */
+html[data-immersive="1"] #st-messages .st-history-fold,
+#st-messages .st-history-fold {
+  display: block;
+  width: 100%;
+  max-width: 51.25rem;
+  margin: var(--sp-1) auto var(--sp-3);
+  padding: var(--sp-2h) var(--sp-3);
+  border: 1px dashed rgba(255,255,255,.18);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  min-height: 0;
+}
+html[data-immersive="1"] #st-messages .st-history-fold:hover,
+#st-messages .st-history-fold:hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.04);
+}
+html[data-color-scheme="day"] #st-messages .st-history-fold {
+  border-color: rgba(28,25,20,.18);
+}
+
+
+/* ===== S8.26 tap-center chrome (no scroll toggle) ===== */
+/*
+  - Default: imm-chrome-hidden (top + full dock gone)
+  - Tap center of #st-messages: toggle chrome
+  - When shown: top is in-flow (not absolute) so it never covers text;
+    dock stays in flex column so messages shrink — no overlay on body text
+*/
+html[data-immersive="1"] .top {
+  position: relative !important; /* was absolute — covered first lines */
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  flex-shrink: 0;
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  min-height: 2.75rem;
+  /* S8.32 immersive top bar must sit above tab-tavern's fixed MAIN shell
+     (z-index:0), hence 300 not var(--z-base). */
+  z-index: 300;
+}
+html[data-immersive="1"] #main-view,
+html[data-immersive="1"] .main-view {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+html[data-immersive="1"] #tab-tavern.tab-panel:not(.hidden) {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+html[data-immersive="1"] #tab-tavern .st-layout:not(.st-side-open),
+html[data-immersive="1"] #tab-tavern .st-main,
+html[data-immersive="1"] #st-view-play {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+html[data-immersive="1"] #st-messages {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  padding-top: var(--sp-2) !important; /* messages scroll; no focus bar above now */
+}
+/* hidden: top gone from flow */
+html[data-immersive="1"].imm-chrome-hidden .top {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  transform: none !important;
+}
+html[data-immersive="1"]:not(.imm-chrome-hidden):not(.imm-top-hidden) .top {
+  display: flex !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+/* dock still fully collapsed when hidden (S8.22) */
+html[data-immersive="1"].imm-chrome-hidden #st-composer,
+html[data-immersive="1"].imm-chrome-hidden #st-composer.st-composer {
+  display: none !important;
+}
+/* kill old edge-peek strip — no longer needed */
+html[data-immersive="1"].imm-chrome-hidden::after {
+  display: none !important;
+  content: none !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+/* when chrome visible, modest pads only — flex already prevents cover */
+html[data-immersive="1"]:not(.imm-chrome-hidden) #st-messages {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: var(--sp-4);
+  scroll-padding-top: var(--sp-2);
+}
+html[data-immersive="1"].imm-chrome-hidden #st-messages {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  scroll-padding-bottom: 0;
+  scroll-padding-top: 0;
+}
+/* no transition flash on toggle */
+html[data-immersive="1"] .top,
+html[data-immersive="1"] #st-composer {
+  transition: none !important;
+}
+
+
+/* Partner: world-book entries + regex editors */
+.editor-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin: var(--sp-3h) 0 var(--sp-1h);
+  padding-top: var(--sp-2h);
+  border-top: var(--sp-0h) solid color-mix(in srgb, var(--border, #334) 80%, transparent);
+}
+.editor-subhead h4 {
+  margin: 0;
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+.entry-list {
+  max-height: 11.25rem;
+}
+.entry-editor {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2h);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel, #1a1f2a) 88%, var(--bg-black));
+  border: 1px solid color-mix(in srgb, var(--border, #334) 70%, transparent);
+}
+.row.checks {
+  flex-wrap: wrap;
+  gap: var(--sp-2h) var(--sp-3h);
+  margin: var(--sp-1h) 0 var(--sp-2);
+}
+.row.checks .check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  font-size: var(--fs-md);
+  opacity: 0.92;
+}
+.partner-layout {
+  align-items: start;
+}
+.partner-regex-panel {
+  grid-column: 1 / -1;
+}
+.item-list.entry-list .item .d {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── S8.27 UI audit fixes ───────────────────────────────────── */
+/* DEBUG: If you see this, CSS v1787100000 is loaded. */
+
+/* P0-1: adult gate — hide everything inside st-layout except the banner */
+.st-layout.st-gated > *:not(#st-adult-banner) {
+  display: none !important;
+}
+.st-layout.st-gated {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0;
+}
+.st-layout.st-gated #st-adult-banner {
+  max-width: 26.25rem;
+  width: 100%;
+}
+
+/* P0-2: st-status no longer sticky-overlapping; keep it in normal flow */
+#st-status {
+  position: static !important;
+  padding: var(--sp-1h) var(--sp-3h);
+  font-size: var(--fs-sm);
+  opacity: 0.75;
+  text-align: center;
+}
+
+/* P0-3: pack meta line — separate cast into its own line, no mid-title breaks */
+.st-pack-item .d {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-pack-item .d2 {
+  display: block;
+  font-size: var(--fs-xs);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: var(--sp-0h);
+}
+
+/* P1-6: continue card CTA contrast — make it look enabled, not disabled */
+.st-continue-card .st-continue-cta {
+  background: var(--accent, #c8a44e) !important;
+  color: #0d0f14 !important;
+  font-weight: 700 !important;
+  border: none !important;
+  padding: var(--sp-2h) var(--sp-6h) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--fs-base) !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+.st-continue-card .st-continue-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(200,164,78,.35);
+}
+.st-continue-card .st-continue-cta:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 56.25rem) {
+ .st-side {
+  position: relative;
+  z-index: var(--z-base);
+}
+}
+@media (max-width: 56.25rem) {
+/* P0-2: mobile sidebar — no overlap with main content */
+html .st-side { .st-side {
+  position: relative;
+  z-index: var(--z-base);
+} }
+}
+
+@media (max-width: 56.25rem) {
+ .st-main {
+  position: relative;
+  z-index: var(--z-base);
+}
+}
+@media (max-width: 56.25rem) {
+.st-main {
+  position: relative;
+  z-index: var(--z-base);
+}
+}
+
+/* P0-2: status row — no sticky overlap */
+.st-status-row {
+  position: relative !important;
+  z-index: var(--z-base);
+}
+
+/* P2-7: desktop wide-screen home — grid fills width */
+@media (min-width: 56.25rem) {
+  .home-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 45rem;
+    margin: 0 auto;
+  }
+}
+@media (min-width: 80rem) {
+  .home-grid {
+    grid-template-columns: repeat(4, 1fr);
+    max-width: 68.75rem;
+  }
+}
+
+/* P2-9: more-sheet card — strip the rogue pink background */
+.more-sheet .more-card,
+.more-sheet .item {
+  background: var(--surface-1, rgba(255,255,255,.06)) !important;
+}
+
+/* P2-8: home recent sessions */
+.home-recent {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: var(--sp-0h) solid var(--border, rgba(255,255,255,.08));
+}
+.home-recent-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 0 0 var(--sp-2h);
+}
+.home-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.home-recent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-0h);
+  padding: var(--sp-2h) var(--sp-3h);
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+  border-radius: var(--radius-sm);
+  background: var(--surface-1, rgba(255,255,255,.04));
+  color: var(--text, #e8e2d4);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  font-family: inherit;
+  font-size: inherit;
+}
+.home-recent-item:hover {
+  background: var(--surface-2, rgba(255,255,255,.08));
+}
+.home-recent-item .hr-title {
+  font-weight: 600;
+  font-size: var(--fs-base);
+}
+.home-recent-item .hr-meta {
+  font-size: var(--fs-sm);
+  opacity: 0.55;
+}
+
+/* ─── S8.28 Author zone shell — unified layout ─────────── */
+.az-shell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.az-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0q);
+  padding: var(--sp-2h) var(--sp-1h);
+  min-width: 6.75rem;
+  max-width: 6.75rem;
+  background: rgba(0,0,0,.12);
+  border-right: var(--sp-0h) solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.az-nav button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  padding: var(--sp-1h) var(--sp-2h);
+  min-height: 2.75rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-family: var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.az-nav button:hover { background: rgba(255,255,255,.06); }
+.az-nav button.active {
+  background: rgba(212,168,83,.15);
+  color: var(--text);
+  font-weight: 600;
+}
+.az-nav-icon { font-size: var(--fs-lg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.az-nav-icon svg { display: block; }
+.az-workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+.az-view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* az-full-editor with header above */
+.az-full-editor {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-3h);
+  max-width: 56.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+.az-view-header {
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-4h) var(--sp-2h);
+  border-bottom: var(--sp-0h) solid var(--border);
+  background: rgba(0,0,0,.08);
+}
+/* S9.5: 日间下黑色半透明头对比不足，改浅棕底 */
+html[data-color-scheme="day"] .az-view-header {
+  background: rgba(60,40,10,.05);
+}
+.az-view-header h2 {
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.az-view-header .muted {
+  margin: var(--sp-1) 0 0;
+  max-width: 51.25rem;
+}
+.az-prompt-preview {
+  flex-shrink: 0;
+  min-height: 0;
+  max-height: 12.5rem;
+  border-top: var(--sp-0h) solid var(--border);
+  overflow-y: auto;
+  padding: var(--sp-2h) 0 var(--sp-0h);
+  margin-top: var(--sp-2);
+}
+
+/* Files view: fill az-desk */
+#az-view-files .az-desk {
+  flex: 1;
+  min-height: 0;
+}
+#az-view-files .az-desk .works-layout {
+  height: 100%;
+}
+
+/* Mobile */
+@media (max-width: 56.25rem) {
+  .az-shell {  flex-direction: column;  }
+}
+@media (max-width: 56.25rem) {
+  .az-nav { 
+  display: none;
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-workspace { 
+  padding-bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+ }
+  /* az-mob-tab 是 fixed 悬浮不占文档流——workspace 的 padding-bottom 会造成
+     az-view 下方 56px 空白条（2026-08-06 用户确认仍存在）。空白去掉后，
+     滚动内容底部让位给悬浮底栏，在 az-view 内补 padding。 */
+  .az-workspace .az-view {
+    padding-bottom: 0;
+  }
+}
+@media (max-width: 56.25rem) {
+  .az-mob-tab { 
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: var(--z-dropdown);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  padding: var(--sp-1h) 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(11,13,18,.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-top: var(--sp-0h) solid var(--border);
+  box-shadow: 0 -8px 32px rgba(0,0,0,.35);
+ }
+}
+/* 桌面端（>56.25rem）az-mob-tab 无任何样式 → display:block 挤占 flex 空间，
+   把 az-workspace/az-view 压成 200px 窄条（2026-08-06 修复：关系图/伏笔/AI分析 UI 被遮挡）。
+   az-mob-tab 只在移动端底部 tab 需要，桌面端必须隐藏。 */
+@media (min-width: 56.2501rem) {
+  .az-mob-tab { display: none !important; }
+}
+@media (max-width: 56.25rem) {
+  .az-mob-tab button { 
+  margin: 0 !important;
+  width: 100% !important;
+  min-height: 3rem;
+  padding: var(--sp-1) var(--sp-0h) !important;
+  border: 0 !important;
+  border-radius: var(--radius-sm) !important;
+  background: transparent;
+  color: var(--text-tertiary);
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--sp-0h);
+  font-weight: 500 !important;
+  box-shadow: none;
+  transform: none !important;
+  filter: none !important;
+  overflow: visible !important;
+  font-family: inherit !important;
+  font-size: var(--fs-xs) !important;
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-mob-tab button.active { 
+  color: var(--text-inverse);
+  background: linear-gradient(180deg, rgba(212,168,83,.22), rgba(212,168,83,.08));
+  box-shadow: inset 0 0 0 1px rgba(212,168,83,.28);
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-mob-ico {  font-size: var(--fs-xl); line-height: 1; display: flex; align-items: center; justify-content: center;  }
+  .az-mob-ico svg { display: block; }
+}
+@media (max-width: 56.25rem) {
+  .az-mob-lab {  font-size: var(--fs-xs); letter-spacing: .02em; line-height: 1.2; font-family: inherit;  }
+}
+/* Show author-zone bottom tab only in author zone.
+   2026-08-06 修复: 原 `:not([data-author-zone="1"]) .az-mob-tab` 是后代选择器, body/.az-shell/
+   #tab-works 均无该属性 → 作者区内底栏也被隐藏, 底部 56px 成裸空白。改为只判断根元素 html。 */
+@media (max-width: 56.25rem) {
+  html:not([data-author-zone="1"]) .az-mob-tab {  display: none !important;  }
+}
+@media (max-width: 56.25rem) {
+  [data-author-zone="1"] .bottom-nav {  display: none !important;  }
+}
+@media (max-width: 56.25rem) {
+  /* 底部空白修复(2026-08-06): workspace 的 padding-bottom 会与 .tab-panel 基类
+     padding-bottom(56px, 给 bnav 让位) 叠加成 112px 空白条。让位改由 az-view 内容
+     内 padding 承担: 滚动到底后内容最后一行停在悬浮栏(az-mob-tab 56px)之上, 无裸空白。 */
+  [data-author-zone="1"] #tab-works.tab-panel {  padding-bottom: 0;  }
+  [data-author-zone="1"] .az-workspace {  padding-bottom: 0;  }
+  [data-author-zone="1"] .az-workspace .az-view {  padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px));  }
+  /* 2026-08-06: az-mob-tab 8按钮/5列 → 2行实体高94px(360x640实测), 让位需按94px 而非单行56px */
+}
+@media (max-width: 56.25rem) {
+  .az-full-editor {  padding: var(--sp-3);  }
+}
+/* Compose view: stack project + composer on mobile */
+@media (max-width: 56.25rem) {
+  #az-view-compose .az-layout { 
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: auto minmax(160px, 34vh) minmax(180px, 1fr);
+  gap: var(--sp-1h);
+  overflow: auto;
+ }
+}
+@media (max-width: 56.25rem) {
+  #az-view-compose .az-composer-pane { 
+  max-width: 100%;
+  max-height: none !important;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  #az-view-compose .az-project-pane { 
+  min-height: 7.5rem;
+  max-height: 34vh !important;
+ }
+}
+@media (max-width: 56.25rem) {
+  #az-view-compose .az-composer-pane { 
+  min-height: 11.25rem;
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-prompt-preview { 
+  max-height: 9.375rem;
+  padding: var(--sp-2) 0 0;
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-view-header { 
+  padding: var(--sp-3) var(--sp-3h) var(--sp-2);
+ }
+}
+@media (max-width: 56.25rem) {
+  .az-view-header h2 { 
+  font-size: var(--fs-lg);
+ }
+}
+
+/* Empty state for compose */
+.az-empty-compose {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2h);
+  min-height: 7.5rem;
+  text-align: center;
+  padding: var(--sp-5h);
+  color: var(--text-secondary);
+}
+.az-empty-compose .big { font-size: var(--fs-display); opacity: .55; }
+.az-empty-compose p { max-width: 20rem; margin: 0; }
+.az-empty-compose .hint { font-size: var(--fs-xs); opacity: .65; }
+

@@ -1,0 +1,94 @@
+/* 列表搜索框（P0：故事馆/作者区/角色卡/Tavern 统一） */
+.list-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--sp-2q) var(--sp-2t);
+  margin-bottom: var(--sp-2);
+  border: 1px solid var(--border, rgba(255,255,255,.1));
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255,255,255,.04);
+  color: var(--text, #e8e8ea);
+  font: inherit;
+  font-size: var(--fs-sm, .875rem);
+  outline: none;
+  transition: border-color .15s ease;
+}
+.list-search:focus {
+  border-color: var(--accent, #d4a017);
+  background: rgba(255,255,255,.06);
+}
+.list-search::placeholder { color: var(--text-secondary, #888); }
+
+/* 继续上次卡片（P1：信息增强） */
+.home-recent { margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: var(--sp-0h) solid var(--border, rgba(255,255,255,.08)); }
+.home-recent-title { font-size: var(--fs-md); font-weight: 600; opacity: .7; margin: 0 0 var(--sp-2h); }
+.home-recent-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.home-recent-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-0h);
+  padding: var(--sp-2h) var(--sp-3h); border: 1px solid var(--border, rgba(255,255,255,.08));
+  border-radius: var(--radius-sm); background: var(--surface-1, rgba(255,255,255,.04));
+  color: var(--text, #e8e2d4); cursor: pointer; text-align: left;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+  font-family: inherit; font-size: inherit;
+}
+.home-recent-item:hover { background: var(--surface-2, rgba(255,255,255,.08)); border-color: var(--border-strong, rgba(255,255,255,.14)); transform: translateY(-2px); }
+.home-recent-item .hr-title { font-weight: 600; font-size: var(--fs-base); }
+.home-recent-item .hr-meta { font-size: var(--fs-sm); opacity: .55; }
+.home-recent-item .hr-excerpt { font-size: var(--fs-sm); opacity: .5; line-height: 1.4; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-list .item,
+aside .item {
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: var(--sp-1h);
+  font-size: var(--fs-md);
+  background: transparent;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.item-list .item:hover,
+aside .item:hover {
+  background: var(--surface-3);
+  transform: translateX(2px);
+}
+.item-list .item.active,
+aside .item.active {
+  border-color: rgba(212,168,83,.45);
+  background: linear-gradient(135deg, rgba(212,168,83,.14), rgba(183,140,58,.08));
+  color: var(--text-inverse);
+}
+.item-list .item .t,
+aside .item .t {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-all;
+  font-weight: 500;
+  max-width: 100%;
+}
+.item-list .item .d,
+aside .item .d {
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-0h);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+/* UUID / path meta under list titles — quieter mono */
+.item-list .item .d.is-id,
+aside .item .d.is-id,
+.item-list .item .d.mono,
+aside .item .d.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-tight);
+  opacity: .85;
+}
+
+main { display: flex; flex-direction: column; min-height: 0; min-width: 0; max-width: 100%; }
+

@@ -1,0 +1,1049 @@
+/* ===== S7-W2 t2 web desk: versions sidebar + style presets + image pane ===== */
+.works-main-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.works-editor-core {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.works-editor-core .works-editor-split {
+  flex: 1;
+  min-height: 0;
+}
+.works-editor-core #works-msg {
+  padding: 0 var(--sp-4h) var(--sp-3);
+  margin: 0;
+}
+.works-versions-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border-left: var(--sp-0h) solid var(--border);
+  background: var(--surface-0);
+  padding: var(--sp-2h) var(--sp-2h) var(--sp-3);
+  min-height: 0;
+  overflow: hidden;
+}
+.works-versions-sidebar .aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-1h);
+}
+.works-versions-list {
+  flex: 1;
+  overflow: auto;
+  max-height: none;
+}
+.works-versions-list .item {
+  cursor: pointer;
+}
+.works-versions-list .item .row-actions {
+  display: flex;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+  flex-wrap: wrap;
+}
+.works-versions-list .item button {
+  width: auto;
+  min-width: 0;
+  padding: var(--sp-0q) var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.works-style-presets {
+  border-top: var(--sp-0h) solid var(--border);
+  padding: var(--sp-2h) var(--sp-3h) var(--sp-3h);
+  background: var(--surface-0);
+}
+.works-style-presets .aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.works-style-presets-body label {
+  display: block;
+  margin: var(--sp-1h) 0;
+}
+.works-style-presets-body textarea,
+.works-style-presets-body input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.works-style-presets-list {
+  max-height: 8.75rem;
+  overflow: auto;
+  margin-top: var(--sp-1h);
+}
+.works-style-presets-list .item.active {
+  outline: 1px solid var(--accent, var(--link));
+}
+.works-image-pane {
+  padding: var(--sp-3) var(--sp-4h);
+  border-top: var(--sp-0h) solid var(--border);
+  background: var(--surface-1, var(--surface-0));
+  max-height: 17.5rem;
+  overflow: auto;
+}
+.works-image-pane.hidden { display: none; }
+.works-image-pane img {
+  max-width: 100%;
+  max-height: 13.75rem;
+  display: block;
+  border-radius: var(--radius-xs);
+  background: #111;
+}
+.works-toolbar-actions button { margin-top: 0; }
+
+@media (max-width: 56.25rem) {
+  .works-main-body { 
+  grid-template-columns: minmax(0, 1fr);
+ }
+}
+@media (max-width: 56.25rem) {
+  .works-versions-sidebar { 
+  border-left: 0;
+  border-top: var(--sp-0h) solid var(--border);
+  max-height: 13.75rem;
+  min-width: 0;
+  max-width: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  .card-wide { 
+  margin: var(--sp-3);
+  max-width: none;
+  width: auto;
+  box-sizing: border-box;
+  padding: var(--sp-4h) var(--sp-4);
+ }
+}
+@media (max-width: 56.25rem) {
+  .prompt-box {  margin: 0 var(--sp-3) var(--sp-3); max-width: 100%; box-sizing: border-box;  }
+}
+@media (max-width: 56.25rem) {
+  .panel {  margin: var(--sp-3); min-width: 0; max-width: 100%; box-sizing: border-box;  }
+}
+@media (max-width: 56.25rem) {
+  .settings.card-wide { 
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  textarea { 
+  max-width: 100%;
+  box-sizing: border-box;
+ }
+}
+@media (max-width: 56.25rem) {
+input, select { textarea { 
+  max-width: 100%;
+  box-sizing: border-box;
+ } }
+}
+
+
+/* Session drawer */
+@media (max-width: 56.25rem) {
+  .drawer { 
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+ }
+}
+
+@media (max-width: 56.25rem) {
+  .drawer-backdrop { 
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-panel { 
+  position: relative;
+  width: min(86vw, 320px);
+  height: 100%;
+  background: var(--surface-1);
+  border-right: var(--sp-0h) solid var(--border-strong);
+  box-shadow: 16px 0 48px rgba(0,0,0,.4);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  animation: drawer-in 180ms cubic-bezier(.4,0,.2,1);
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-panel.out { 
+  animation: drawer-out 140ms ease forwards;
+ }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-12px); opacity: .7; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes drawer-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-12px); opacity: .5; }
+}
+@media (max-width: 56.25rem) {
+  .drawer-head { 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3h) var(--sp-3h) var(--sp-2h);
+  border-bottom: var(--sp-0h) solid var(--border);
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-list { 
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-2);
+  -webkit-overflow-scrolling: touch;
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-list .item { 
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--sp-1h);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  cursor: pointer;
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-list .item.active { 
+  border-color: rgba(212,168,83,.45);
+  background: rgba(212,168,83,.12);
+ }
+}
+@media (max-width: 56.25rem) {
+  .drawer-list .item .t {  display: block; font-weight: 600; font-size: var(--fs-base);  }
+}
+@media (max-width: 56.25rem) {
+  .drawer-list .item .d {  display: block; color: var(--text-tertiary); font-size: var(--fs-xs); margin-top: var(--sp-0h);  }
+}
+
+/* Small-phone polish even on desktop mode if narrow - keep light fallback */
+@media (max-width: 40rem) {
+  .card { margin: 8vh var(--sp-4); max-width: none; }
+}
+
+
+/* Settings sections */
+.settings-sub {
+  margin: var(--sp-4h) 0 var(--sp-2);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: var(--tracking-tight);
+}
+.settings-actions {
+  display: flex;
+  gap: var(--sp-2h);
+  align-items: center;
+  margin-top: var(--sp-3h);
+  flex-wrap: wrap;
+}
+.settings-actions button {
+  width: auto;
+  margin-top: 0;
+  min-width: 7.5rem;
+}
+#set-key, #set-base, #set-model { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--fs-base); }
+.settings-model-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  width: 100%;
+}
+.settings-model-row input { flex: 1; min-width: 0; }
+.settings-model-row button { width: auto; margin-top: 0; white-space: nowrap; flex-shrink: 0; }
+.settings-model-select {
+  width: 100%;
+  margin-top: var(--sp-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--fs-md);
+}
+
+/* Form extras */
+input[type="file"] {
+  width: 100%;
+  padding: var(--sp-2h) 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  background: transparent;
+  border: 0;
+}
+button.ghost.danger {
+  border-color: rgba(248,113,113,.35);
+  color: #fca5a5;
+}
+button.ghost.danger:hover:not(:disabled) {
+  background: rgba(248,113,113,.14);
+  border-color: rgba(248,113,113,.55);
+}
+
+/* ---------- S7-W1: home / bond / adventure ---------- */
+.badge-s7w1 {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: var(--sp-0h) var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--warm-text);
+  background: linear-gradient(135deg, rgba(212,168,83,.28), rgba(45,212,191,.14));
+  border: 1px solid rgba(212,168,83,.35);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+.app-footer {
+  text-align: center;
+  padding: var(--sp-2h) var(--sp-3) var(--sp-3h);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+/* 非沉浸：footer 是 body 直接子节点，会撑高 body 造成 window 可滚动
+   → sticky 顶栏随 window 滚动滚出视口（2026-08-06 安卓实测 top:-94）。
+   沉浸态已隐藏 footer；非沉浸态同样隐藏（装饰文字，底部已有 bnav/az-mob-tab）。 */
+html:not([data-immersive="1"]) .app-footer { display: none !important; }
+@media (max-width: 56.25rem) {
+  .app-footer { 
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+ }
+}
+
+/* WCAG 2.5.5: home page CTA buttons (generated by JS, no src CSS) */
+.home-cta, .home-cta-ghost { min-height: 2.75rem; height: 2.75rem; }
+/* brand div is role=button+tabindex=0 on homepage */
+.brand { min-height: 2.75rem; }
+/* bond-apply / bond-mem-analyze: bare button without explicit height */
+#bond-apply, #bond-mem-analyze { min-height: 2.75rem; height: 2.75rem; }
+
+.home-panel {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--sp-5h) var(--sp-4h) var(--sp-8);
+}
+.home-hero h2 {
+  margin: 0 0 var(--sp-1h);
+  font-size: var(--fs-2xl);
+  letter-spacing: var(--tracking-display);
+}
+.home-hero .muted { margin: 0 0 var(--sp-4h); }
+.home-hero code {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  background: var(--st-ember-weak, rgba(212,168,83,.12));
+  padding: var(--sp-0h) var(--sp-1h);
+  border-radius: var(--radius-xs);
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+  gap: var(--sp-3h);
+  min-width: 0;
+  max-width: 100%;
+}
+.home-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1h);
+  text-align: left;
+  padding: var(--sp-4h) var(--sp-4);
+  min-height: 7.5rem;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background:
+    linear-gradient(145deg, rgba(212,168,83,.08) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
+    var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  transition:
+    transform 220ms var(--st-pop),
+    border-color 200ms ease,
+    box-shadow 220ms var(--st-pop),
+    background 200ms ease,
+    filter 200ms ease;
+  animation: homeCardIn 480ms var(--st-pop) both;
+}
+.home-card::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto auto -30%;
+  width: 55%;
+  height: 160%;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.09) 48%, transparent 62%);
+  transform: translateX(-120%) rotate(8deg);
+  transition: transform .7s var(--st-pop);
+  pointer-events: none;
+  z-index: var(--z-base);
+}
+.home-card > * { position: relative; z-index: var(--z-base); }
+.home-card:hover {
+  transform: translateY(-4px) scale(1.012);
+  border-color: rgba(212,168,83,.55);
+  box-shadow:
+    0 16px 40px rgba(0,0,0,.38),
+    0 0 0 1px rgba(212,168,83,.22),
+    0 0 28px rgba(212,168,83,.12);
+}
+.home-card:hover::after { transform: translateX(220%) rotate(8deg); }
+.home-card:active { transform: translateY(-1px) scale(.995); }
+.home-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.home-card .home-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(212,168,83,.10);
+  border: 1px solid rgba(212,168,83,.18);
+  color: var(--accent);
+  transition: transform 220ms var(--st-pop), background 180ms ease, box-shadow 220ms ease;
+}
+.home-card:hover .home-ico {
+  transform: translateY(-1px) scale(1.06);
+  background: rgba(212,168,83,.18);
+  box-shadow: 0 0 18px rgba(212,168,83,.22);
+}
+.home-card strong {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-tight);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.home-card small {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+/* stagger entrance */
+.home-card:nth-child(1) { animation-delay: 40ms; }
+.home-card:nth-child(2) { animation-delay: 90ms; }
+.home-card:nth-child(3) { animation-delay: 140ms; }
+.home-card:nth-child(4) { animation-delay: 190ms; }
+.home-card:nth-child(5) { animation-delay: 240ms; }
+.home-card:nth-child(6) { animation-delay: 290ms; }
+.home-card:nth-child(7) { animation-delay: 340ms; }
+.home-card:nth-child(8) { animation-delay: 390ms; }
+.home-hero {
+  animation: homeHeroIn 420ms var(--st-pop) both;
+}
+@keyframes homeCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(.98); filter: blur(2px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
+@keyframes homeHeroIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* re-run stagger when panel re-shown */
+.home-panel.is-entering .home-card,
+.home-panel.is-entering .home-hero {
+  animation: none;
+}
+.home-panel.is-entering .home-hero {
+  animation: homeHeroIn 420ms var(--st-pop) both;
+}
+.home-panel.is-entering .home-card {
+  animation: homeCardIn 480ms var(--st-pop) both;
+}
+.home-panel.is-entering .home-card:nth-child(1) { animation-delay: 40ms; }
+.home-panel.is-entering .home-card:nth-child(2) { animation-delay: 90ms; }
+.home-panel.is-entering .home-card:nth-child(3) { animation-delay: 140ms; }
+.home-panel.is-entering .home-card:nth-child(4) { animation-delay: 190ms; }
+.home-panel.is-entering .home-card:nth-child(5) { animation-delay: 240ms; }
+.home-panel.is-entering .home-card:nth-child(6) { animation-delay: 290ms; }
+.home-panel.is-entering .home-card:nth-child(7) { animation-delay: 340ms; }
+.home-panel.is-entering .home-card:nth-child(8) { animation-delay: 390ms; }
+
+.bond-panel, .adventure-panel {
+  max-width: 68.75rem;
+  margin: 0 auto;
+  padding: var(--sp-3h) var(--sp-4) var(--sp-6);
+}
+.bond-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.bond-head h2 { margin: 0 0 var(--sp-1); font-size: var(--fs-2xl); }
+.bond-head h3, .bond-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); color: var(--text-secondary); font-weight: 600; }
+.bond-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3h);
+}
+.bond-layout .panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3h);
+  min-height: 17.5rem;
+}
+.bond-list {
+  max-height: 13.75rem;
+  overflow: auto;
+}
+.bond-panel hr {
+  border: 0;
+  border-top: var(--sp-0h) solid var(--border);
+  margin: var(--sp-4) 0;
+}
+
+.adventure-panel .adv-messages {
+  min-height: 60vh;
+  max-height: none;
+  overflow: auto;
+  padding: var(--sp-3h) var(--sp-4);
+  margin: 0;
+  /* S13e: pure-text reading even outside immersive — no vignette card */
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+.adventure-panel .adv-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.adventure-panel .adv-composer textarea {
+  width: 100%;
+  resize: none;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 6rem;
+  box-sizing: border-box;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2t) var(--sp-3h);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.4;
+  outline: none;
+}
+/* S12: adventure narrative is pure text — user lines flush left like the
+   story, no chat-bubble chrome (matches the immersive reader) */
+#tab-adventure .adv-messages .bubble.user,
+#tab-adventure .adv-messages .bubble.agent {
+  align-self: flex-start;
+  max-width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ===== Adventure immersive reader (S7-W1 → S11) =====
+   Two views: #adv-setup (first-run config gate) and #adv-read (full-screen
+   reading). In immersive mode the global top/bottom chrome hides; the reader
+   reveals chrome only when scrolled to the very bottom, and it must never
+   overlap the text (in-flow, not overlay). */
+.adv-setup {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: var(--sp-8);
+  min-height: 60vh;
+}
+.adv-setup-card {
+  width: min(30rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2h);
+  padding: var(--sp-5);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.adv-setup-card h2 { margin: 0; font-size: var(--fs-2xl); }
+.adv-setup-card .primary {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--sp-2h) var(--sp-4);
+  font-weight: 600;
+  cursor: pointer;
+}
+.adv-setup-card .primary:hover { filter: brightness(1.1); }
+.adv-setup-card select {
+  width: 100%;
+  margin-top: var(--sp-1);
+}
+
+/* Immersive reader: #adv-read becomes the full-height reading surface.
+   #tab-adventure is fixed in immersive (like tavern), so give the panel
+   height and let messages flex. */
+html[data-immersive="1"] #tab-adventure.tab-panel:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-base);
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] #tab-adventure .adventure-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+html[data-immersive="1"] #tab-adventure .adv-setup {
+  display: none !important;
+}
+html[data-immersive="1"] #tab-adventure .adv-read {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  width: 100%;
+  position: relative;
+}
+/* S13: top bar is tap-driven; when visible it must never overlap the text —
+   give the message pane matching top padding (same trick as tavern #st-messages) */
+html[data-immersive="1"]:not(.imm-chrome-hidden) #tab-adventure .adv-messages {
+  padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
+}
+html[data-immersive="1"] #tab-adventure .adv-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  max-height: none;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  scrollbar-width: none;
+}
+html[data-immersive="1"] #tab-adventure .adv-messages::-webkit-scrollbar { display: none; }
+/* pure-text reading: no bubbles, no frames (S9.27 preference) */
+html[data-immersive="1"] #tab-adventure .adv-messages .bubble {
+  max-width: 100%;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: var(--sp-2h) 0;
+}
+html[data-immersive="1"] #tab-adventure .adv-messages .bubble.user {
+  align-self: flex-start;
+  max-width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+html[data-immersive="1"] #tab-adventure .adv-messages .bubble.agent {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+/* composer row: wand on the left of input, in-flow under messages */
+html[data-immersive="1"] #tab-adventure .adv-composer {
+  flex-shrink: 0;
+  position: relative;
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: transparent;
+}
+/* S13b/S13c: composer fully collapses while scrolling mid-text — no residual
+   placeholder background band (transform-slide left a 65px dark strip) */
+html[data-immersive="1"].adv-composer-hidden #tab-adventure .adv-composer {
+  display: none !important;
+}
+/* S13h: 与穿书统一——滚动时选项也随 composer 隐藏(穿书 st-options 随
+   imm-chrome-hidden 隐藏 #st-composer; 冒险的 choices 在 composer 外独立,
+   需单独跟随)。用高特异性(2,3,1)压过显示规则(1,3,1), 免 important。 */
+html[data-immersive="1"].adv-composer-hidden #tab-adventure #adv-choices {
+  display: none;
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 6rem;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2t) var(--sp-3h);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+  resize: none;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row textarea:focus {
+  border-color: rgba(212,168,83,.55);
+  box-shadow: 0 0 0 3px rgba(212,168,83,.12);
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-btn,
+html[data-immersive="1"] #tab-adventure #adv-wand-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem; /* override button.ghost 2.75rem */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  /* S13c: .st-tool-btn sets color !important + opacity .88 + padding !important —
+     force wand to match the send/stop icon buttons exactly */
+  color: var(--accent) !important;
+  opacity: 1;
+  padding: 0 !important;
+  cursor: pointer;
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-btn:hover,
+html[data-immersive="1"] #tab-adventure #adv-wand-btn:hover {
+  color: var(--accent) !important;
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row .composer-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--sp-2);
+}
+/* S11: 发送按钮与魔法棒同款样式（幽灵/描边，不用实心金）— 视觉协调 */
+html[data-immersive="1"] #tab-adventure .adv-composer-row #adv-send-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-width: 2.5rem; /* override .composer-actions button 4.75rem */
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row #adv-send-btn:hover {
+  background: var(--surface-2);
+}
+/* S12: one state button — streaming 停止 mode turns danger red */
+html[data-immersive="1"] #tab-adventure .adv-composer-row #adv-send-btn.danger {
+  color: var(--danger, #e05);
+  border-color: rgba(248,113,113,.45);
+}
+html[data-immersive="1"] #tab-adventure .adv-composer-row #adv-send-btn.danger:hover {
+  background: rgba(248,113,113,.10);
+}
+/* S13: 跑团页发送按钮同样改图标 — 固定 2.5rem 方钮居中 SVG */
+#story-composer .composer-actions #story-send-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-width: 2.5rem; /* override .composer-actions button 4.75rem */
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+#story-composer .composer-actions #story-send-btn.danger {
+  color: var(--danger, #e05);
+  border-color: rgba(248,113,113,.45);
+}
+#story-composer .composer-actions #story-send-btn.danger:hover {
+  background: rgba(248,113,113,.10);
+}
+/* choices chips: 沉浸阅读下仅非空时显示——开局选项必须可点；空容器隐藏。
+   display 不带 important: 下方 S13h 的 adv-composer-hidden 隐藏规则靠
+   (2,3,1) 特异性压过本规则 (1,3,1), 若带 important 会压死隐藏。 */
+html[data-immersive="1"] #tab-adventure #adv-choices {
+  display: flex;
+}
+html[data-immersive="1"] #tab-adventure #adv-choices:empty {
+  display: none;
+}
+/* S13h: 冒险选项布局——按钮 JS 侧已加 st-option-chip 类, 自动继承穿书
+   全局沉浸规则(html[data-immersive="1"] .st-option-chip 三列均分/左对齐/
+   透明底, _immersive-stage.css)。此处无需重复定义。 */
+
+/* Wand config menu — anchored above the composer (fixed within the reader) */
+html[data-immersive="1"] #tab-adventure .adv-wand-menu {
+  position: absolute !important;
+  bottom: calc(var(--sp-2) + 3.5rem) !important;
+  top: auto !important;
+  left: var(--sp-4) !important;
+  right: auto !important;
+  width: min(20rem, 92vw) !important;
+  min-width: 14rem;
+  z-index: 1200 !important;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow);
+  /* display 故意不加 important 标记: 若加了会压死下方 .adv-wand-menu.hidden
+     的 display:none(CSS 级联中 important 优先于一切普通声明, 与特异性
+     无关)——导致点应用配置菜单悬浮不消失。1,3,1 的 hidden 规则足以
+     压过本规则的 1,2,1。 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+/* S11 fix: .hidden must beat the immersive menu rule above — 1,3,1
+   specificity wins over 1,2,1 once the immersive rule's display no longer
+   carries important (see comment above). */
+html[data-immersive="1"] #tab-adventure .adv-wand-menu.hidden {
+  display: none;
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-menu select {
+  width: 100%;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  padding: var(--sp-1t) var(--sp-2h);
+  font: inherit;
+  outline: none;
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-menu .st-wand-label {
+  font-size: var(--fs-xs);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--sp-1);
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-menu .adv-mode-row {
+  display: flex;
+  gap: var(--sp-2h);
+  flex-wrap: wrap;
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-menu #adv-apply-menu {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--sp-2t) var(--sp-3h);
+  font-weight: 600;
+  cursor: pointer;
+}
+html[data-immersive="1"] #tab-adventure .adv-wand-menu #adv-apply-menu:hover { filter: brightness(1.1); }
+
+/* Non-immersive fallback: keep the reader usable inside the normal panel.
+   S13f: the reader fills the panel so the composer pins to the bottom —
+   no dead band between the input and the mobile bottom bar. */
+#tab-adventure .adventure-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.adventure-panel .adv-read {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+.adventure-panel .adv-read .adv-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.adventure-panel .adv-composer-row { display: flex; align-items: center; gap: var(--sp-2); }
+.adventure-panel .adv-composer-row textarea { flex: 1 1 auto; min-width: 0; }
+/* S13e: ghost icon send button matches the wand (was solid accent) */
+.adventure-panel .adv-composer-row #adv-send-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-width: 2.5rem; /* override .composer-actions button 4.75rem */
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent) !important;
+  cursor: pointer;
+}
+.adventure-panel .adv-composer-row #adv-send-btn:hover { background: var(--surface-2); }
+.adventure-panel .adv-composer-row #adv-send-btn.danger {
+  color: var(--danger, #e05) !important;
+  border-color: rgba(248,113,113,.45);
+}
+.adventure-panel .adv-composer-row #adv-send-btn.danger:hover { background: rgba(248,113,113,.10); }
+.adventure-panel .adv-composer-row #adv-wand-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem; /* override button.ghost 2.75rem */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent) !important;
+  opacity: 1;
+  padding: 0 !important;
+  cursor: pointer;
+}
+/* S13e: kill the legacy beige gradient card on the adventure panel — the
+   reader is pure text everywhere, immersive or not */
+.adventure-panel.stage-panel {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.adventure-panel .adv-wand-menu {
+  position: absolute;
+  bottom: calc(var(--sp-2) + 3.5rem);
+  top: auto;
+  left: var(--sp-4);
+  right: auto;
+  z-index: var(--z-dropdown);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.adventure-panel .adv-wand-menu select {
+  width: 100%;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  padding: var(--sp-1t) var(--sp-2h);
+  font: inherit;
+  outline: none;
+}
+.adventure-panel .adv-wand-menu .adv-mode-row { display: flex; gap: var(--sp-2h); flex-wrap: wrap; }
+
+@media (max-width: 56.25rem) {
+  .bond-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 32.5rem) {
+  .home-grid { grid-template-columns: 1fr; }
+}
+
+/* timeline board (analysis timeline-analysis view) */
+.tl-board {
+  position: relative;
+  margin: var(--sp-2h) 0 var(--sp-3h);
+  padding-left: var(--sp-5);
+  color: var(--text);
+}
+.tl-board::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+}
+.tl-node {
+  position: relative;
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2h) var(--sp-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.tl-node::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+.tl-time {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--accent);
+}
+.tl-node .an-badge { vertical-align: middle; }
+.tl-event {
+  margin-top: var(--sp-1q);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.tl-note {
+  margin-top: var(--sp-1q);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+
+

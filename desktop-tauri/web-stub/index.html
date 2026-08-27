@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kaleido Desktop</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #08090d;
+      color: #e8e2d6;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      max-width: 28rem;
+      padding: 2rem;
+      border: 1px solid rgba(212, 168, 83, 0.25);
+      border-radius: 12px;
+      background: #10131a;
+    }
+    a { color: #d4a853; }
+    code {
+      background: #1a1f2a;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Kaleido Desktop</h1>
+    <p>正在连接工作台… 若长时间停留在此页，请确认 <code>kaleido-server</code> 已启动，或设置：</p>
+    <p><code>KALEIDO_DESKTOP_URL=https://kaleido.example.com/web/</code></p>
+    <p><a id="local" href="http://127.0.0.1:18766/web/">打开本机 :18766</a></p>
+  </div>
+  <script>
+    setTimeout(function () {
+      var u = 'http://127.0.0.1:18766/web/';
+      location.replace(u);
+    }, 600);
+  </script>
+</body>
+</html>

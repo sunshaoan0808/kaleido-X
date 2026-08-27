@@ -1,0 +1,117 @@
+/* S8.28c: compose view redesign + mobile bottom actions */
+.az-compose-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.az-compose-body .az-layout {
+  flex: 1;
+  min-height: 0;
+}
+.az-prompt-preview {
+  flex-shrink: 0;
+  border-top: var(--sp-0h) solid var(--border);
+}
+.az-prompt-preview details summary {
+  padding: var(--sp-2h) var(--sp-3h);
+  cursor: pointer;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  user-select: none;
+}
+.az-prompt-preview details[open] summary {
+  border-bottom: var(--sp-0h) solid var(--border);
+  margin-bottom: var(--sp-1h);
+}
+.az-prompt-preview .prompt-box {
+  background: transparent;
+  border: none;
+  padding: 0 var(--sp-3h) var(--sp-2h);
+  margin: 0;
+}
+.az-prompt-preview .preview {
+  min-height: 3.75rem;
+  max-height: 12.5rem;
+  background: rgba(0,0,0,.18);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-2);
+  overflow: auto;
+}
+.az-compose-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--sp-2h);
+  padding: var(--sp-2h) var(--sp-3h);
+  border-top: var(--sp-0h) solid var(--border);
+  background: rgba(0,0,0,.12);
+}
+.az-compose-actions button {
+  flex: 1;
+  min-height: 2.625rem;
+}
+#az-launch-btn { font-weight: 700; min-height: 2.75rem; height: 2.75rem; }
+#az-compose-btn { font-weight: 500; min-height: 2.75rem; }
+
+@media (max-width: 40rem) {
+  .az-compose-actions {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+    z-index: var(--z-dropdown);
+    background: var(--surface-0);
+    padding: var(--sp-2) var(--sp-3h);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.25);
+  }
+  .az-compose-actions button { min-height: 2.375rem; }
+  #az-view-compose,
+  #az-view-compose .az-compose-body {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .az-mob-tab {
+    min-height: 3.125rem;
+    padding: var(--sp-1) 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  }
+  .az-mob-tab button {
+    min-height: 2.625rem;
+    padding: var(--sp-0h) var(--sp-0h) !important;
+  }
+}
+/* Mobile compose: single scroll, no nested panes (S8.28c refine) */
+@media (max-width: 40rem) {
+  #az-view-compose .az-compose-body {
+    overflow-y: auto;
+    display: block;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  }
+  #az-view-compose .az-layout {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  #az-view-compose .az-project-pane,
+  #az-view-compose .az-composer-pane {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-right: none;
+    border-bottom: var(--sp-0h) solid var(--border);
+  }
+  #az-view-compose #az-composer {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .az-prompt-preview {
+    position: sticky;
+    bottom: 0;
+    background: rgba(0,0,0,.1);
+    z-index: var(--z-base);
+  }
+  .az-prompt-preview .az-prompt-details summary {
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-xs);
+  }
+}
+
+

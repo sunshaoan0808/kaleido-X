@@ -1,0 +1,420 @@
+/* ===== APPEARANCE: day mode + wallpaper + settings ===== */
+#app-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-below);
+  pointer-events: none;
+  background-image: var(--wallpaper-image);
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--wall-blur));
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity var(--transition);
+}
+#app-wallpaper.has-wallpaper { opacity: var(--wall-op); }
+/* S9.22: wallpaper readability fallback — semi-transparent overlay between
+   wallpaper and content keeps text contrast on busy/light images. */
+#app-wallpaper.has-wallpaper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--wall-overlay);
+  pointer-events: none;
+}
+body {
+  font-family: var(--font-ui);
+}
+
+/* Day / warm paper skin */
+html[data-color-scheme="day"] {
+  --bg: #f3eee4;
+  --surface-0: var(--cream);
+  --surface-1: #f7f1e6;
+  --surface-2: #efe7d8;
+  --surface-3: #e7ddcc;
+  --surface-4: #ddd1bc;
+  --surface-5: #d0c2a8;
+  --text: var(--day-text);
+  --text-secondary: #5c5346;
+  /* S8.16: was #8a7f6d (~3.6 on paper) — bnav/hint/placeholder unreadable */
+  --text-tertiary: #6b6152;
+  --accent: #8b6520;
+  --accent-2: #9a7020;
+  --accent-glow: rgba(184,137,45,.28);
+  --accent2: #9a7020;
+  --err: #c24141;
+  --warn: #b45309;
+  --border: rgba(60,40,10,.12);
+  --border-strong: rgba(60,40,10,.22);
+  --user: rgba(184,137,45,.16);
+  --agent: rgba(80,100,90,.10);
+  --shadow: 0 18px 50px rgba(60,40,10,.12);
+  --shadow-sm: 0 4px 14px rgba(60,40,10,.08);
+  --st-ember: #b8892d;
+  --st-ember-weak: rgba(184,137,45,.12);
+  --st-ember-medium: rgba(184,137,45,.28);
+  --st-warm-glow: rgba(184,137,45,.08);
+  --st-ink: #f5efe4;
+  --st-stage-vignette: radial-gradient(ellipse at 50% 0%, rgba(184,137,45,.10), transparent 55%);
+  --wand-menu-bg: rgba(251,247,240,.97);
+  --wand-divider: rgba(60,40,10,.10);
+  /* S9.6: 浅金 token 在日间浅底不可见（st-continue-kicker/cta、st-badge.demo、td.mid、warm-text 引用点），统一深金 */
+  --gold-light: #8b6520;
+  --warm-text: #8b6520;
+  --teal-light: #0f766e;
+  --rose-light: #b91c1c;
+  color-scheme: light;
+}
+html[data-color-scheme="day"] body {
+  background:
+    radial-gradient(1100px 520px at 10% -10%, rgba(184,137,45,.10), transparent 58%),
+    radial-gradient(800px 420px at 90% 0%, rgba(160,120,40,.06), transparent 52%),
+    var(--bg);
+  color: var(--text);
+}
+/* Day mobile bottom nav was still night glass (rgba 11,13,18) — tertiary on it looked wrong */
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"] .bottom-nav {
+  background: rgba(250,246,238,.94) !important;
+  border-top-color: rgba(60,40,10,.14);
+  box-shadow: 0 -2px 8px rgba(60,40,10,.06);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"] .bnav.active {
+  color: var(--day-text);
+  background: linear-gradient(180deg, rgba(184,137,45,.28), rgba(184,137,45,.10));
+  box-shadow: inset 0 0 0 1px rgba(184,137,45,.35);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"] .bnav.active-tools {
+  color: var(--day-text);
+  background: linear-gradient(180deg, rgba(45,120,100,.18), rgba(45,120,100,.06));
+  box-shadow: inset 0 0 0 1px rgba(45,120,100,.28);
+}
+}
+html[data-color-scheme="day"] .top,
+html[data-color-scheme="day"] .bottom-nav {
+  background: rgba(250,246,238,.88);
+  border-color: var(--border);
+}
+/* Day author-zone bottom tab (az-mob-tab) was still night glass rgba(11,13,18,.88)
+   from _immersive-read.css — day override missing, author-zone bottom bar stayed dark. */
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"] .az-mob-tab {
+  background: rgba(250,246,238,.94);
+  border-top-color: rgba(60,40,10,.14);
+  box-shadow: 0 -2px 8px rgba(60,40,10,.06);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"] .az-mob-tab button {
+  color: var(--day-text);
+}
+html[data-color-scheme="day"] .az-mob-tab button.active {
+  color: var(--day-text);
+  background: linear-gradient(180deg, rgba(184,137,45,.28), rgba(184,137,45,.10));
+  box-shadow: inset 0 0 0 1px rgba(184,137,45,.35);
+}
+}
+html[data-color-scheme="day"] .tab.active,
+html[data-color-scheme="day"] .bnav.active {
+  color: var(--day-text) !important;
+}
+html[data-color-scheme="day"] .card,
+html[data-color-scheme="day"] .card-wide,
+html[data-color-scheme="day"] .panel,
+html[data-color-scheme="day"] .settings {
+  box-shadow: var(--shadow-sm);
+}
+html[data-color-scheme="day"] input,
+html[data-color-scheme="day"] textarea,
+html[data-color-scheme="day"] select {
+  background: #fffcf6;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+html[data-color-scheme="day"] input:focus,
+html[data-color-scheme="day"] textarea:focus,
+html[data-color-scheme="day"] select:focus {
+  box-shadow: 0 0 0 3px rgba(184,137,45,.16);
+}
+html[data-color-scheme="day"] .bubble.user { background: var(--user); color: var(--text); }
+html[data-color-scheme="day"] .bubble.agent { background: var(--agent); color: var(--text); }
+html[data-color-scheme="day"] .st-layout,
+html[data-color-scheme="day"] .st-main {
+  background: var(--st-stage-vignette), var(--surface-0);
+}
+html[data-color-scheme="day"] .st-banner {
+  color: #7a5a12;
+  background: linear-gradient(90deg, rgba(184,137,45,.12), rgba(194,65,65,.06));
+}
+html[data-color-scheme="day"] ::selection {
+  background: rgba(184,137,45,.28);
+  color: var(--day-text);
+}
+html[data-color-scheme="day"] button.ghost {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+html[data-color-scheme="day"] .muted { color: var(--text-secondary); }
+html[data-color-scheme="day"] .logo-mark {
+  box-shadow: 0 0 14px rgba(184,137,45,.35);
+}
+
+/* Appearance form */
+.appearance-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-0h);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.appearance-block .file-label {
+  display: block;
+  margin: var(--sp-2h) 0 var(--sp-1h);
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+.appearance-block input[type="range"] {
+  width: 100%;
+  padding: var(--sp-2) 0;
+  background: transparent;
+  border: 0;
+  accent-color: var(--accent);
+}
+#set-appearance label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  min-width: 0;
+}
+#set-appearance label > input:not([type="range"]),
+#set-appearance label > select,
+#set-appearance label > textarea {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+#set-appearance label input[type="range"] {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.appearance-block code {
+  font-size: var(--fs-sm);
+  padding: var(--sp-0h) var(--sp-1);
+  border-radius: var(--radius-xs);
+  background: var(--surface-3);
+}
+#theme-toggle-btn {
+  min-width: 2.5rem;
+  width: auto;
+  margin-top: 0;
+  padding: var(--sp-1t) var(--sp-2h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#theme-toggle-btn[data-scheme="day"] svg { opacity: .95; }
+@media (max-width: 56.25rem) {
+  #theme-toggle-btn {  min-height: 2.5rem;  }
+}
+
+/* Audit polish: settings sticky actions on mobile */
+@media (max-width: 56.25rem) {
+  .settings.card-wide { 
+  padding-bottom: var(--sp-6);
+ }
+}
+@media (max-width: 56.25rem) {
+  .settings-actions-bar { 
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-base);
+  padding: var(--sp-2h) 0;
+  background: linear-gradient(180deg, transparent, var(--surface-1) 35%);
+ }
+}
+/* Focus rings stronger in day */
+html[data-color-scheme="day"] :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+/* ===== MOTION PASS: tab enter + chrome + reduced ===== */
+.tab-panel.is-entering {
+  animation: tabPanelIn 320ms var(--st-pop) both;
+}
+@keyframes tabPanelIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.top .tab,
+.bnav {
+  transition: color var(--transition), background var(--transition), border-color var(--transition),
+    box-shadow var(--transition), transform 160ms var(--st-pop);
+}
+.top .tab:active,
+.bnav:active { transform: scale(.96); }
+.top .tab.active,
+.bnav.active {
+  transition: color var(--transition), background var(--transition), border-color var(--transition),
+    box-shadow 220ms var(--st-pop), transform 160ms var(--st-pop);
+}
+.login-view.card {
+  animation: loginIn 520ms var(--st-pop) both;
+}
+@keyframes loginIn {
+  from { opacity: 0; transform: translateY(18px) scale(.98); filter: blur(3px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
+/* List items soft lift */
+.item-list .item,
+.bond-list .item {
+  transition: transform 160ms var(--st-pop), border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+.item-list .item:hover,
+.bond-list .item:hover {
+  transform: translateX(2px);
+}
+/* Sheet / drawer already have enter; add exit-friendly opacity on backdrop */
+.sheet-backdrop,
+.drawer-backdrop {
+  transition: opacity 180ms ease;
+}
+/* Day mode home card sheen softer */
+html[data-color-scheme="day"] .home-card {
+  box-shadow: var(--shadow-sm);
+}
+html[data-color-scheme="day"] .home-card:hover {
+  box-shadow:
+    0 14px 34px rgba(60,40,10,.14),
+    0 0 0 1px rgba(184,137,45,.28),
+    0 0 22px rgba(184,137,45,.10);
+}
+html[data-color-scheme="day"] .home-card .home-ico {
+  background: rgba(184,137,45,.12);
+  border-color: rgba(184,137,45,.22);
+}
+/* Global reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-1, .ambient-2,
+  .home-card, .home-hero,
+  .home-panel.is-entering .home-card,
+  .home-panel.is-entering .home-hero,
+  .tab-panel.is-entering,
+  .login-view.card,
+  .st-skeleton, .st-bubble, .st-wizard, .st-entry-card,
+  .st-option-chip, .st-focus-chip, .st-mode-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+  .home-card:hover,
+  .home-card:active,
+  .home-card:hover .home-ico {
+    transform: none !important;
+  }
+  .home-card::after { display: none; }
+}
+
+/* ===== Cool-gray paper day theme (day-gray) — element-level overrides =====
+   Warm-toned hardcoded values in the day rules above stay warm under gray;
+   these double-attribute selectors (specificity 0,2,1 > 0,1,1) neutralize
+   the key chrome: body glow, nav glass, active states, inputs, banner,
+   selection, logo, home cards. Rides the day base, so every other
+   html[data-color-scheme="day"] rule keeps matching unchanged. */
+html[data-color-scheme="day"][data-day-tone="gray"] body {
+  background:
+    radial-gradient(1100px 520px at 10% -10%, rgba(120,130,150,.08), transparent 58%),
+    radial-gradient(800px 420px at 90% 0%, rgba(100,115,140,.05), transparent 52%),
+    var(--bg);
+}
+@media (max-width: 56.25rem) {
+html[data-color-scheme="day"][data-day-tone="gray"] .bottom-nav {
+  background: rgba(246,247,249,.94) !important;
+  border-top-color: rgba(30,40,60,.12);
+  box-shadow: 0 -2px 8px rgba(30,40,60,.05);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .bnav.active {
+  background: linear-gradient(180deg, rgba(110,125,150,.22), rgba(110,125,150,.08));
+  box-shadow: inset 0 0 0 1px rgba(110,125,150,.32);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .bnav.active-tools {
+  background: linear-gradient(180deg, rgba(70,130,120,.16), rgba(70,130,120,.05));
+  box-shadow: inset 0 0 0 1px rgba(70,130,120,.26);
+}
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .top,
+html[data-color-scheme="day"][data-day-tone="gray"] .bottom-nav {
+  background: rgba(246,247,249,.88);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] input,
+html[data-color-scheme="day"][data-day-tone="gray"] textarea,
+html[data-color-scheme="day"][data-day-tone="gray"] select {
+  background: #fbfcfd;
+  border-color: var(--border-strong);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] input:focus,
+html[data-color-scheme="day"][data-day-tone="gray"] textarea:focus,
+html[data-color-scheme="day"][data-day-tone="gray"] select:focus {
+  border-color: rgba(110,125,150,.55);
+  box-shadow: 0 0 0 3px rgba(110,125,150,.14);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .st-banner {
+  color: #44506a;
+  background: linear-gradient(90deg, rgba(110,125,150,.12), rgba(110,125,150,.05));
+}
+html[data-color-scheme="day"][data-day-tone="gray"] ::selection {
+  background: rgba(110,125,150,.26);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .logo-mark {
+  box-shadow: 0 0 18px rgba(110,125,150,.35);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .home-card:hover {
+  border-color: rgba(30,40,60,.12);
+  box-shadow:
+    0 14px 34px rgba(30,40,60,.12),
+    0 0 0 1px rgba(110,125,150,.24),
+    0 0 22px rgba(110,125,150,.08);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .home-card .home-ico {
+  background: rgba(110,125,150,.10);
+  border-color: rgba(110,125,150,.20);
+}
+/* Immersive day-gray chrome */
+html[data-color-scheme="day"][data-day-tone="gray"][data-immersive="1"] #st-composer textarea,
+html[data-color-scheme="day"][data-day-tone="gray"][data-immersive="1"] #st-input {
+  background: rgba(246,247,249,.9);
+  border-color: rgba(30,40,60,.14);
+}
+html[data-color-scheme="day"][data-day-tone="gray"][data-immersive="1"] #st-composer .st-option-chip,
+html[data-color-scheme="day"][data-day-tone="gray"][data-immersive="1"] .st-option-chip {
+  background: rgba(246,247,249,.85);
+  border-color: rgba(30,40,60,.18);
+}
+/* Assist modal + embed-lab event accents under gray */
+html[data-color-scheme="day"][data-day-tone="gray"] .st-continue-card .st-continue-cta {
+  color: #44506a;
+  background: rgba(110,125,150,.12);
+  border-color: rgba(110,125,150,.26);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] .st-continue-card .st-continue-kicker {
+  color: #44506a;
+}
+html[data-color-scheme="day"][data-day-tone="gray"] #st-assist-modal .st-assist-card {
+  background: var(--surface-1);
+  border-color: rgba(30,40,60,.14);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] #st-assist-modal #st-assist-send {
+  background: rgba(110,125,150,.12);
+  border-color: rgba(110,125,150,.28);
+}
+html[data-color-scheme="day"][data-day-tone="gray"] #tab-embedlab .el-event-actor {
+  background: rgba(110,125,150,.10);
+  border-color: rgba(110,125,150,.20);
+}
+

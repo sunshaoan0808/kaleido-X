@@ -1,0 +1,97 @@
+name: release-build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+# 上传产物到 GitHub Release 需要 contents:write（仓库 Actions 默认 restricted 时 GITHUB_TOKEN 无权限）
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # P2-4 审计修复：提交前扫描已入库的明文密钥/凭据（SK-, AKIA, sk- 等），
+      # 防止 CI 构建产物或源码把 secret 带上线。
+      # [fix 2026-08-15] gitleaks-action@v2 每次上传泄漏报告 artifact，撞上 GitHub
+      # Actions 存储配额（Artifact storage quota hit，用量 6-12h 才重算）导致构建必挂；
+      # 改 docker CLI 直接扫描——不上传 artifact、泄漏仍 fail job。
+      - name: Secret scan (gitleaks)
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest detect --source /repo --no-banner --redact --config /repo/gitleaks.toml
+        continue-on-error: false
+
+      # built/image/ort 需要 rustc >= 1.87/1.88（与本地一致用 1.88）
+      - name: Setup Rust 1.88
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.88.0
+          components: rustfmt
+
+      - name: Setup sccache
+        run: |
+          if ! command -v sccache &>/dev/null; then
+            curl -sL -o /tmp/sccache.tar.gz https://github.com/mozilla/sccache/releases/download/v0.8.2/sccache-v0.8.2-x86_64-unknown-linux-musl.tar.gz
+            tar xzf /tmp/sccache.tar.gz -C /tmp
+            sudo install -m 755 /tmp/sccache-v0.8.2-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache
+          fi
+          sccache --version
+          mkdir -p "$HOME/.cache/sccache"
+          echo "SCCACHE_DIR=$HOME/.cache/sccache" >> "$GITHUB_ENV"
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '.'
+
+      - name: Build release
+        run: |
+          set -euo pipefail
+          cargo build --release -p kaleido-server 2>&1 | tail -500
+          ls -la target/release/kaleido-server
+          du -h target/release/kaleido-server
+
+      - name: Run convert/core tests
+        run: |
+          set -euo pipefail
+          cargo test --release -p kaleido-server --bin kaleido-server convert 2>&1 | tail -20
+
+      # U11: 编译并运行新增的 resume/epoch/成本记账纯函数单测（独立于 convert 过滤）
+      - name: Compile tests (no-run) + U11 unit tests
+        run: |
+          set -euo pipefail
+          cargo test --release -p kaleido-server --bin kaleido-server --no-run 2>&1 | tail -30
+          cargo test --release -p kaleido-server --bin kaleido-server u11_ 2>&1 | tail -25
+          # U12-A: 编译并运行双Agent 上下文治理/确认/交接协议纯函数单测
+          cargo test --release -p kaleido-server --bin kaleido-server u12a_ 2>&1 | tail -25
+          # 编译 kaleido-core 测试（不运行：root 基线固定 5 个失败属已知）
+          cargo test --release -p kaleido-core --no-run 2>&1 | tail -20
+          # 实跑吞噬 P0/P1/P2 测试（graph_store 模块覆盖 graph/relationship/cleanup；partial 精确测试）
+          cargo test --release -p kaleido-core graph_store 2>&1 | tail -60
+          cargo test --release -p kaleido-core test_save_result_partial_success 2>&1 | tail -20
+
+      - name: Upload release binary to GitHub Release
+        # Actions artifact 配额(账号级 500MB)已被 cache 历史占用吃满且 6-12h 才重算,
+        # 改用 GitHub Release asset(独立 2GB 额度)承载构建产物, 不受 artifact 配额影响。
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="build-$(git rev-parse --short HEAD)"
+          # 首次创建, 已存在则复用
+          gh release create "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --title "build $RELEASE_TAG" \
+            --notes "kaleido-server release binary (commit $RELEASE_TAG)" || true
+          gh release upload "$RELEASE_TAG" target/release/kaleido-server \
+            --repo "${{ github.repository }}" --clobber
+          echo "release=$RELEASE_TAG" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,39 @@
+/* U10: 图像管线消费——档案馆 Pack 详情页配图区
+ * 与 tavern 详情卡片同语言：--border / --surface / --text-* 令牌，无花哨装饰。 */
+.u10-img-card {
+  margin-top: 10px;
+}
+.u10-img-card .row {
+  align-items: center;
+}
+.u10-inp {
+  min-width: 150px;
+  flex: 1 1 160px;
+}
+.u10-img-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.u10-fig {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--border, rgba(127,127,127,.25));
+  border-radius: 10px;
+  background: rgba(127,127,127,.05);
+}
+.u10-img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #0b0d12;
+}
+.u10-fig figcaption {
+  margin-top: 6px;
+  text-align: center;
+  word-break: break-all;
+}
+.u10-img-row figcaption.is-err { color: var(--danger, #f87171); }

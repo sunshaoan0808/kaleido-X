@@ -1,0 +1,161 @@
+/* S8.3 settings control-room cards */
+.settings-desk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3h);
+}
+.settings-section {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)), var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4) var(--sp-4h);
+  min-width: 0;
+}
+.settings-section-title {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+.settings-section .settings-sub {
+  margin-top: var(--sp-3h);
+  font-size: var(--fs-base);
+  color: var(--text-secondary);
+}
+.settings-actions-bar {
+  display: flex;
+  gap: var(--sp-2h);
+  align-items: center;
+  margin-top: 0;
+  flex-wrap: wrap;
+}
+.settings-actions-bar button {
+  width: auto;
+  margin-top: 0;
+  min-width: 7.5rem;
+}
+
+/* Tools sheet section headers */
+@media (max-width: 56.25rem) {
+  .sheet-section-title { 
+  grid-column: 1 / -1;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: var(--sp-2h) var(--sp-1) var(--sp-1);
+  border-bottom: var(--sp-0h) solid var(--border);
+ }
+}
+@media (max-width: 56.25rem) {
+  .sheet-section-title:first-child {  padding-top: 0;  }
+}
+@media (max-width: 56.25rem) {
+  .sheet-item { 
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+ }
+}
+@media (max-width: 56.25rem) {
+  .sheet-item:focus-visible { 
+  transform: translateY(-1px);
+ }
+}
+
+
+
+/* Reduced motion */
+@media (max-width: 56.25rem) and (prefers-reduced-motion: reduce) {
+  .ambient,
+  .home-card,
+  .home-hero,
+  .bubble.is-enter,
+  html .sheet-panel,
+  .drawer-panel {
+    animation: none !important;
+  }
+  .ambient { filter: blur(20px); opacity: .06; }
+  .home-card:hover,
+  html .sheet-item:hover,
+  .bnav:hover {
+    transform: none;
+  }
+}
+
+/* Settings / wide cards */
+.card-wide {
+  max-width: 45rem;
+  margin: var(--sp-6) auto;
+  background: linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.01) 100%), var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-7);
+  box-shadow: var(--shadow-sm);
+}
+.settings { display: flex; flex-direction: column; gap: var(--sp-1); }
+.settings > p.muted { margin: 0 0 var(--sp-3); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: var(--sp-2); height: var(--sp-2); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-5); border-radius: var(--radius-full); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); background-clip: content-box; }
+* { scrollbar-width: thin; scrollbar-color: var(--surface-5) transparent; }
+
+
+/* [酒馆对齐] 设置页只读连接卡片 + AI 供应商激活徽标 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.25rem;
+  padding: 0 .5rem;
+  border-radius: 999px;
+  font-size: .6875rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+.badge-active {
+  background: linear-gradient(135deg, #2dd4bf2e, #2dd4bf14);
+  border-color: #2dd4bf66;
+  color: #5eead4;
+}
+.settings.card.card-active {
+  border-color: #2dd4bf66;
+  box-shadow: 0 0 0 1px #2dd4bf33, var(--shadow-sm);
+}
+.conn-card {
+  margin: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff06, #ffffff02), var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.conn-card-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.conn-label {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+.conn-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-all;
+  font-size: var(--fs-sm);
+}
+.conn-value.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

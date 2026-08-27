@@ -1,0 +1,185 @@
+.toast-item {
+  pointer-events: auto;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  cursor: pointer;
+  word-break: break-word;
+  animation: toastIn 300ms cubic-bezier(.16,1,.3,1) forwards;
+}
+.toast-item.out { animation: toastOut 300ms ease forwards; }
+@keyframes toastIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+
+/* Day mode — warm paper (default, defined in _appearance.css with higher specificity below).
+   This block is the cool-gray paper variant, opt-in via data-day-tone="gray".
+   Double-attribute selector (0,2,0) outranks html[data-color-scheme="day"] (0,1,1),
+   so every token below overrides the warm defaults while all element-level
+   html[data-color-scheme="day"] rules keep matching (gray rides the day base). */
+[data-color-scheme="day"][data-day-tone="gray"] {
+  --bg: #f5f6f7;
+  --surface-0: #f8f9fa;
+  --surface-1: #f1f3f5;
+  --surface-2: #e9ecf0;
+  --surface-3: #e1e5ea;
+  --surface-4: #d7dce3;
+  --surface-5: #cbd2da;
+  --text: #1a1a1a;
+  --text-secondary: #5c5c5c;
+  --text-tertiary: #8a8a8a;
+  /* S9.5: --text-inverse 必须随日间反转（否则 az-item.active 等深底元素文字仍是 #07080c 深色，看不清） */
+  --text-inverse: #1a1a1a;
+  --accent: var(--accent-2);
+  --accent-2: #9e7a2e;
+  --accent-glow: rgba(183,140,58,.25);
+  --err: #dc2626;
+  --warn: #d97706;
+  --border: rgba(0,0,0,.10);
+  --border-strong: rgba(0,0,0,.18);
+  --user: rgba(183,140,58,.12);
+  --agent: rgba(80,120,150,.08);
+  --shadow: 0 24px 80px rgba(0,0,0,.12);
+  --shadow-sm: 0 4px 16px rgba(0,0,0,.08);
+  --st-ember: var(--accent-2);
+  --st-ember-weak: rgba(183,140,58,.10);
+  --st-ember-medium: rgba(183,140,58,.22);
+  --st-warm-glow: rgba(183,140,58,.04);
+  --st-ink: #f8f9fa;
+  --st-stage-vignette: radial-gradient(ellipse at 50% 0%, rgba(183,140,58,.06), transparent 55%);
+  /* Tokens defined only in the warm block must be re-declared for gray (values stay aligned) */
+  --accent2: #9e7a2e;
+  --wand-menu-bg: rgba(248,249,250,.97);
+  --wand-divider: rgba(30,40,60,.10);
+  --gold-light: #44506a;
+  --warm-text: #44506a;
+  --teal-light: #0f766e;
+  --rose-light: #b91c1c;
+}
+
+* { box-sizing: border-box; }
+
+::selection {
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+html, body {
+  height: 100%;
+  max-width: 100%;
+  overflow-x: clip; /* clip fixed ambient bleed without trapping position:sticky */
+}
+.skip-link {
+  position: absolute;
+  top: -60px;
+  left: var(--sp-3);
+  z-index: var(--z-overlay);
+  padding: var(--sp-2) var(--sp-3h);
+  background: var(--surface-1);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  transition: top 160ms ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.skip-link:focus {
+  top: var(--sp-3);
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tracking-ui);
+  background:
+    radial-gradient(1100px 520px at 10% -10%, rgba(212,168,83,.10), transparent 58%),
+    radial-gradient(800px 420px at 90% 0%, rgba(212,168,83,.06), transparent 52%),
+    var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+[data-color-scheme="day"] body {
+  background:
+    radial-gradient(1100px 520px at 10% -10%, rgba(183,140,58,.06), transparent 58%),
+    radial-gradient(800px 420px at 90% 0%, rgba(183,140,58,.04), transparent 52%),
+    var(--bg);
+}
+/* Micro-interaction: button press feedback */
+button:active:not(:disabled) {
+  transform: scale(.96);
+}
+button.ghost:active:not(:disabled),
+button.st-mode-btn:active:not(:disabled) {
+  transform: scale(.96);
+}
+button, .btn, .ghost, .tool, select, input, textarea {
+  transition: transform var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition), opacity var(--transition);
+}
+
+/* S9.24: touch + PWA 优化 */
+:root { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+input, textarea, select { touch-action: manipulation; }
+body { overscroll-behavior-y: contain; -webkit-text-size-adjust: 100%; }
+/* Safe area insets (notch / home indicator) */
+:root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px); --safe-right: env(safe-area-inset-right, 0px); }
+
+/* M3: honor reduced-motion preference — collapse animations/transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* M5: touch devices (hover:none) — strip decorative hover lift/shadow
+   that would stick after tap; keep functional bg/color + :active press. */
+@media (hover: none) and (pointer: coarse) {
+  button:hover,
+  [role="button"]:hover,
+  [tabindex="0"]:hover,
+  button:hover:not(:disabled),
+  .home-card:hover,
+  .home-card:hover .home-ico,
+  .home-card:hover::after,
+  .st-entry-card:hover,
+  .st-badge:hover,
+  .home-recent-item:hover,
+  .chat-start-btn:hover:not(:disabled),
+  .send-btn:hover,
+  .item:hover,
+  .st-session-list .item:hover,
+  .st-save-list .item:hover,
+  .st-node-list .item:hover,
+  .bond-list .item:hover,
+  .st-continue-card:hover,
+  .st-history-fold:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+  }
+  .home-card:hover::after { opacity: 0 !important; }
+  button:active:not(:disabled) { transform: scale(.96) !important; }
+}
+

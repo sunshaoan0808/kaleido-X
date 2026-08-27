@@ -1,0 +1,23 @@
+/* Works IDE */
+.works-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.works-tree-pane {
+  border-right: var(--sp-0h) solid var(--border);
+  padding: var(--sp-3);
+  overflow: auto;
+  background: rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.works-cwd { margin: 0; word-break: break-all; color: var(--text-tertiary); }
+.works-tree { flex: 1; max-height: none; overflow: auto; }
+/* file/folder glyphs injected as inline SVG by JS; no emoji */
+

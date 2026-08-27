@@ -1,0 +1,14 @@
+# Replace kaleido.example.com with your domain; enable compose profile `tls`.
+# docker compose --profile tls up -d
+
+kaleido.example.com {
+	encode gzip
+	reverse_proxy server:18766
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+}

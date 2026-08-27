@@ -1,0 +1,17 @@
+[package]
+name = "kaleido-harness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Kaleido self-evolving (refine) harness: data layer, parsing, apply and rollback."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+# Only for driving the async `LlmClient` unit tests; reuses the workspace
+# tokio (already fetched by other workspace crates).
+tokio = { workspace = true }

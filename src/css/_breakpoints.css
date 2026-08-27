@@ -1,0 +1,80 @@
+/* ============================================================
+ * _breakpoints.css — S9.23 响应式断点细化
+ * ------------------------------------------------------------
+ * 断点阶梯（rem，基于 16px 根字号）：
+ *   xs  ≤22.5rem (360px)   iPhone SE / 超小屏
+ *   sm  ≤40rem   (640px)   小屏手机（已有 _mobile-density）
+ *   md  ≤56.25rem(900px)   主移动断点（265处沿用，勿动）
+ *   lg  56.25–68.75rem (900–1100px) 中段模糊带 ← 本模块新增
+ *   xl  ≥80rem   (1280px)  桌面/超宽
+ *   xxl ≥100rem  (1600px)  超宽屏 ← 本模块新增
+ * ------------------------------------------------------------
+ * 原则：不拆 900px 主断点（已验证覆盖主要场景），只补
+ * 中段挤压 / 超宽限宽 / 极窄兜底三处真空。
+ * ============================================================ */
+
+/* ── 1. 中段模糊带 900–1100px：两列卡片不挤压 ── */
+@media (min-width: 56.25rem) and (max-width: 68.75rem) {
+  /* bond/adventure 双列在 900–1024 内容区仅 ~660px，每列 320px 过窄 → 收单列 */
+  .bond-layout {
+    grid-template-columns: 1fr;
+  }
+  /* works 主区 1fr+240px 在 900–1000 时内容列过窄 → 侧栏压缩 */
+  .works-main-body {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+  }
+  /* home-grid 双列在 900–1024 仍可保持，但加呼吸间距 */
+  .home-grid {
+    gap: var(--sp-3h);
+  }
+}
+
+/* ── 2. 超宽屏 ≥1280px：内容限宽，避免视线横扫 ── */
+@media (min-width: 80rem) {
+  /* 消息气泡限宽居中（immerse-read 已有 53.75rem 规则，这里补普通聊天视图） */
+  #messages .bubble,
+  #story-messages .bubble {
+    max-width: 64rem;
+  }
+  /* 双栏/多列工具区不再无限拉伸 */
+  .bond-layout {
+    max-width: 64rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ── 3. 超宽屏 ≥1600px：home-grid 4列 → 6列 ── */
+@media (min-width: 100rem) {
+  .home-grid {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: 100rem;
+  }
+}
+
+/* ── 4. 极窄屏 ≤360px：兜底，防横向溢出 ── */
+@media (max-width: 22.5rem) {
+  /* 卡片/面板留白收紧 */
+  .card,
+  .panel,
+  .settings.card-wide {
+    margin-left: var(--sp-2);
+    margin-right: var(--sp-2);
+    padding-left: var(--sp-2h);
+    padding-right: var(--sp-2h);
+  }
+  /* 顶部品牌区压缩：logo 微缩 + 标题收紧 */
+  .brand {
+    font-size: var(--fs-lg);
+  }
+  .logo-mark {
+    width: var(--sp-6);
+    height: var(--sp-6);
+  }
+  /* 键盘行/工具条避免溢出 */
+  .composer-row,
+  .st-composer {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+  }
+}

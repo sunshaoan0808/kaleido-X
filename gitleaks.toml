@@ -1,0 +1,14 @@
+# gitleaks 配置 —— 排除非密钥误报
+# graphify-out/: 知识图谱缓存（已在 .gitignore），内含 SHA-256 摘要被 generic-api-key 误报
+# scripts/smoke_u12a_u13_u14.py: 集成测试用的固定测试密码（非真实凭据）
+title = "kaleido gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "误报排除：graphify 缓存目录 + 集成测试固定密码"
+paths = [
+  '''graphify-out/''',
+  '''scripts/smoke_u12a_u13_u14\.py''',
+]

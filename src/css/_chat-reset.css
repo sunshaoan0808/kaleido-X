@@ -1,0 +1,480 @@
+/* ===== S9.3 chat shell reset (2026-07-31) =====
+   web/index.html chat panel uses chat-shell / chat-aside / chat-main /
+   chat-messages / chat-composer / composer-box / send-btn.
+   These mirror the legacy .layout grid + aside/main flex, so the chat tab
+   renders as a proper app shell (aside | messages+composer) instead of
+   unstyled stacked blocks (history then input at page bottom). */
+.chat-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+}
+.chat-aside {
+  border-right: var(--sp-0h) solid var(--border);
+  padding: var(--sp-3);
+  overflow: auto;
+  background: rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.chat-aside .item-list { max-height: none; }
+/* S9.4: 选项界面 — setup 卡片 + 最近会话 */
+.chat-setup {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sp-5h);
+  padding: var(--sp-5) var(--sp-4) calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    radial-gradient(ellipse 80% 45% at 50% -6%, rgba(212,168,83,.09), transparent 55%),
+    var(--surface-0);
+}
+.chat-setup-card {
+  width: min(26rem, 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015)), var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6h);
+  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(212,168,83,.08);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: auto;
+}
+.chat-setup-card h3 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
+.chat-setup-card .inline { display: flex; align-items: center; gap: var(--sp-2h); margin: 0; }
+.chat-setup-card .inline select { flex: 1 1 auto; min-width: 0; }
+.chat-start-btn {
+  margin-top: var(--sp-2);
+  min-height: 3rem;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--bg);
+  border: 0;
+  cursor: pointer;
+}
+.chat-start-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.chat-setup-history {
+  width: min(26rem, 100%);
+  margin: auto;
+  background: rgba(0,0,0,.12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.chat-setup-history .aside-head { padding: 0 var(--sp-1); }
+.chat-setup-history .item { padding: var(--sp-2h) var(--sp-3); border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; margin-bottom: var(--sp-1h); font-size: var(--fs-md); background: transparent; transition: background var(--transition), border-color var(--transition); }
+.chat-setup-history .item:hover { background: var(--surface-3); }
+.chat-setup-history .item .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.chat-setup-history .item .d { color: var(--text-tertiary); font-size: var(--fs-xs); margin-top: var(--sp-0h); }
+.chat-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.chat-main #messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.chat-main #composer.chat-composer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(var(--sp-3h) + env(safe-area-inset-bottom, 0px));
+}
+.composer-box {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-end;
+  min-width: 0;
+}
+.composer-box textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.send-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent), #b78c3a);
+  color: #0b0d12;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(212,168,83,.28);
+  transition: filter .18s ease, transform .18s ease;
+}
+.send-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.send-btn:active { transform: translateY(0); }
+.send-btn:disabled { opacity: .45; cursor: default; transform: none; filter: none; }
+.composer-actions .send-btn { min-width: 2.75rem; width: 2.75rem; height: 2.75rem; }
+@media (max-width: 56.25rem) {
+  .send-btn { 
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  flex: 0 0 auto !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+ }
+}
+@media (max-width: 56.25rem) {
+/* S9.3c: mobile generic button rules (flex:1 1 50% + min-width 140px !important)
+   would squash the round send icon — re-assert circle with !important */
+html .composer-actions > .send-btn {
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
+  height: 2.75rem !important;
+  flex: 0 0 auto !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+ }
+}
+
+
+/* ---- mobile chat shell: single column, aside → session drawer ---- */
+@media (max-width: 56.25rem) {
+  .chat-shell { 
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+ }
+}
+@media (max-width: 56.25rem) {
+  .chat-aside {  display: none;  }
+}
+@media (max-width: 56.25rem) {
+  .chat-main { 
+  height: auto;
+  flex: 1 1 auto;
+  max-height: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  #tab-chat #messages.chat-messages { 
+  padding: var(--sp-3);
+ }
+}
+@media (max-width: 56.25rem) {
+  #tab-chat #composer.chat-composer { 
+  padding-bottom: calc(var(--sp-2h) + env(safe-area-inset-bottom, 0px));
+ }
+}
+@media (max-width: 56.25rem) {
+  #tab-chat #messages.chat-messages { 
+  padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px) + var(--bnav-h, 0px));
+ }
+}
+@media (max-width: 56.25rem) {
+  .composer-box textarea { 
+  font-size: var(--fs-lg); /* prevent iOS zoom */
+  min-height: 2.75rem;
+ }
+}
+@media (max-width: 56.25rem) {
+  .send-btn {  width: 2.75rem; height: 2.75rem;  }
+}
+
+/* ---- immersive chat: centered reading column, aside hidden, composer pinned ---- */
+html[data-immersive="1"] #tab-chat .chat-shell > .chat-aside { display: none !important; }
+/* S9.3c: immersive chat = pure reading — hide the wb/cc admin toolbar that
+   squeezes the message column (esp. on Android where it wraps to 160px) */
+html[data-immersive="1"] #tab-chat .chat-toolbar { display: none !important; }
+html[data-immersive="1"] #tab-chat .chat-shell {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  background:
+    radial-gradient(ellipse 90% 50% at 50% -8%, rgba(212,168,83,.1), transparent 55%),
+    radial-gradient(ellipse 60% 35% at 10% 100%, rgba(0,0,0,.3), transparent 50%),
+    var(--bg);
+}
+html[data-immersive="1"] #tab-chat .chat-shell > .chat-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 53.75rem;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: transparent;
+}
+html[data-immersive="1"] #tab-chat #messages.chat-messages {
+  align-items: center;
+  gap: var(--sp-4);
+}
+html[data-immersive="1"] #tab-chat #messages.chat-messages > * {
+  width: 100%;
+  max-width: 51.25rem;
+}
+html[data-immersive="1"] #tab-chat #composer.chat-composer {
+  position: relative;
+  padding-top: var(--sp-3);
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
+  border-top: var(--sp-0h) solid rgba(212,168,83,.16);
+  background: rgba(8,9,13,.92);
+  backdrop-filter: blur(14px);
+}
+/* mobile immersive: chat fills viewport, only #messages scrolls */
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-chat .chat-shell {
+  height: auto;
+  max-height: 100%;
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-chat .chat-main { max-height: 100%; }
+}
+
+/* ---- S9.3b: viewport-lock chat panels in NON-immersive mode too ----
+   Without a fixed panel height the chat tab grows with message history
+   (page scrolls 15k+ px) and the composer sits at the bottom of the whole
+   page — "下滑才到对话框". Locking the panel makes #messages the only
+   scroll region and keeps the input always visible. --top-h is set by JS
+   from the real header height; --bnav-h covers the mobile bottom nav. */
+html:not([data-immersive="1"]) #tab-chat.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-story.tab-panel:not(.hidden) {
+  height: calc(100dvh - var(--top-h, 3.9375rem));
+  max-height: calc(100dvh - var(--top-h, 3.9375rem));
+  min-height: 0;
+  overflow: hidden;
+}
+/* 冒险页非沉浸态无内部滚动容器（adventure-panel 不像 chat-setup 有 overflow-y:auto），
+   必须面板级滚动，否则内容超高时完全无法滑动（2026-08-07 移动端实测 sh=964>ch=778） */
+html:not([data-immersive="1"]) #tab-adventure.tab-panel:not(.hidden) {
+  height: calc(100dvh - var(--top-h, 3.9375rem));
+  max-height: calc(100dvh - var(--top-h, 3.9375rem));
+  min-height: 0;
+  overflow-y: auto;
+}
+/* 非沉浸：home/bond/partner/settings/jobs/bookshelf 等 tab 也锁定自身高度，
+   滚动发生在 panel 内而不是 window——避免 sticky 顶栏随 window 滚动滚出视口
+   （2026-08-06 安卓实测：首页 window.scrollTo(200) 后 .top top:-94 消失）。 */
+html:not([data-immersive="1"]) #tab-home.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-bond.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-partner.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-settings.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-jobs.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-bookshelf.tab-panel:not(.hidden) {
+  height: calc(100dvh - var(--top-h, 3.9375rem));
+  max-height: calc(100dvh - var(--top-h, 3.9375rem));
+  min-height: 0;
+  overflow-y: auto;
+}
+@media (max-width: 56.25rem) {
+  :not([data-immersive="1"]) #tab-adventure.tab-panel:not(.hidden) { 
+  height: calc(100dvh - var(--top-h, 3.9375rem) - var(--bnav-h, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - var(--top-h, 3.9375rem) - var(--bnav-h, 0px) - env(safe-area-inset-bottom, 0px));
+ }
+}
+@media (max-width: 56.25rem) {
+html:not([data-immersive="1"]) #tab-chat.tab-panel:not(.hidden), html:not([data-immersive="1"]) #tab-story.tab-panel:not(.hidden) { :not([data-immersive="1"]) #tab-adventure.tab-panel:not(.hidden) { 
+  height: calc(100dvh - var(--top-h, 3.9375rem) - var(--bnav-h, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - var(--top-h, 3.9375rem) - var(--bnav-h, 0px) - env(safe-area-inset-bottom, 0px));
+ } }
+}
+
+
+/* === Non-immersive: #tab-tavern + #tab-packs are body children, need fixed overlay === */
+@media (max-width: 56.25rem) {
+  html:not([data-immersive="1"]) .tab-panel:not(.hidden) {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: var(--top-h, 3.9375rem);
+    bottom: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    z-index: 1;
+    padding-bottom: calc(var(--bnav-h, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}
+html:not([data-immersive="1"]) #tab-tavern.tab-panel:not(.hidden),
+html:not([data-immersive="1"]) #tab-packs.tab-panel:not(.hidden) {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--top-h, 3.9375rem);
+  bottom: 0;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+  z-index: var(--z-base, 1);
+  background: var(--bg, #0a0b0f);
+}
+/* S8.28: works (author zone) 同样是非沉浸 body 子面板——缺定位会排在 #app 后面视口外。
+   与 tavern/packs 一致：fixed 铺满顶栏下方视口。az-shell 内部 flex 需要父级有确定高度。 */
+html:not([data-immersive="1"]) #tab-works.tab-panel:not(.hidden) {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--top-h, 3.9375rem);
+  bottom: 0;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+  z-index: var(--z-base, 1);
+  background: var(--bg, #0a0b0f);
+}
+@media (max-width: 56.25rem) {
+  :not([data-immersive="1"]) #tab-works.tab-panel:not(.hidden) {
+  bottom: calc(var(--bnav-h, 0px) + env(safe-area-inset-bottom, 0px));
+ }
+}
+@media (max-width: 56.25rem) {
+  :not([data-immersive="1"]) #tab-tavern.tab-panel:not(.hidden),
+  :not([data-immersive="1"]) #tab-packs.tab-panel:not(.hidden) {
+  bottom: calc(var(--bnav-h, 0px) + env(safe-area-inset-bottom, 0px));
+ }
+}
+
+/* === Pack list grouping: collapsible variants (同书多版本合并) === */
+.st-pack-group { margin: var(--sp-0q) 0; }
+.st-pack-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-1t) var(--sp-2h);
+  min-height: 2.75rem;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(212,168,83,.06), transparent 70%), var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s ease, background .15s ease;
+}
+.st-pack-group-head:hover { border-color: rgba(212,168,83,.4); background: rgba(212,168,83,.1); }
+.st-pack-group-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-pack-group-meta { flex: 0 0 auto; font-size: var(--fs-xs); font-weight: 500; color: var(--text-tertiary); white-space: nowrap; }
+.st-pack-group-arrow {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: var(--sp-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  transition: transform .18s var(--st-pop);
+}
+.st-pack-group.open .st-pack-group-arrow { transform: rotate(90deg); }
+.st-pack-group-body { display: none; padding: var(--sp-1q) 0 0 var(--sp-1h); }
+.st-pack-group.open .st-pack-group-body { display: block; }
+.st-pack-item-nested {
+  padding: var(--sp-2) var(--sp-2h) var(--sp-2h) !important;
+  border-left: var(--sp-0h) solid rgba(212,168,83,.22);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin: var(--sp-0h) 0;
+}
+
+/* === Session list grouping: collapsible same-title sessions === */
+.st-session-group { margin: var(--sp-0q) 0; }
+.st-session-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-1t) var(--sp-2h);
+  min-height: 2.75rem;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(45,212,191,.05), transparent 70%), var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s ease, background .15s ease;
+}
+.st-session-group-head:hover { border-color: rgba(45,212,191,.4); background: rgba(45,212,191,.08); }
+.st-session-group-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-session-group-meta { flex: 0 0 auto; font-size: var(--fs-xs); font-weight: 500; color: var(--text-tertiary); white-space: nowrap; }
+.st-session-group-arrow {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: var(--sp-4);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  transition: transform .18s var(--st-pop);
+}
+.st-session-group.open .st-session-group-arrow { transform: rotate(90deg); }
+.st-session-group-body { display: none; padding: var(--sp-1q) 0 0 var(--sp-1h); }
+.st-session-group.open .st-session-group-body { display: block; }
+.st-session-item-nested {
+  border-left: var(--sp-0h) solid rgba(45,212,191,.22);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Group "more" button — reveal remaining variants in an expanded group */
+.st-group-more {
+  display: block;
+  width: 100%;
+  margin: var(--sp-1) 0 var(--sp-0h);
+  padding: var(--sp-1h) var(--sp-2h);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.st-group-more:hover {
+  border-color: rgba(212,168,83,.45);
+  color: var(--text);
+  background: rgba(212,168,83,.06);
+}
+

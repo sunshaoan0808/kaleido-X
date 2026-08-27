@@ -1,0 +1,50 @@
+# Kaleido S1 — headless server + Caddy TLS reverse proxy
+# Usage:
+#   cp .env.example .env   # fill secrets
+#   docker compose up -d --build
+#
+# Local without TLS: only `server` service, hit http://127.0.0.1:18766
+
+services:
+  server:
+    build: .
+    image: kaleido-server:s1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      KALEIDO_HOST: "0.0.0.0"
+      KALEIDO_PORT: "18766"
+      KALEIDO_DATA: /data
+    volumes:
+      - kaleido_data:/data
+    # bind localhost only when no caddy; for caddy leave published ports empty and use internal net
+    ports:
+      - "127.0.0.1:18766:18766"
+    networks:
+      - kaleido
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    profiles: ["tls"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
+    networks:
+      - kaleido
+
+volumes:
+  kaleido_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  kaleido:
+    driver: bridge

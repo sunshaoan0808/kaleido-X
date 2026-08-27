@@ -1,0 +1,24 @@
+[package]
+name = "kaleido-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+argon2 = { workspace = true }
+password-hash = { workspace = true }
+rand_core = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+tracing = { workspace = true }
+base64 = { workspace = true }
+zip = { workspace = true }
+regex = { workspace = true }
+rand = { workspace = true }
+lazy_static = { workspace = true }
+unicode-normalization = { workspace = true }
+rusqlite = { version = "0.32", features = ["bundled"] }

@@ -1,0 +1,138 @@
+/* ===== ST semantic recall bar ===== */
+.st-recall-bar {
+  margin: 0 0 var(--sp-2h);
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(212,168,83,.16);
+  background: linear-gradient(180deg, rgba(212,168,83,.06), rgba(0,0,0,.18));
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.st-recall-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+  min-width: 0;
+}
+.st-recall-title {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  letter-spacing: .04em;
+  color: var(--warm-text);
+  text-transform: uppercase;
+}
+.st-recall-lab {
+  margin-left: auto;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+.st-recall-list {
+  display: grid;
+  gap: var(--sp-1h);
+  min-width: 0;
+}
+.st-recall-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--sp-1h) var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.04);
+}
+.st-recall-rank {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  padding-top: var(--sp-0h);
+}
+.st-recall-kind {
+  display: inline-block;
+  margin-right: var(--sp-1h);
+  padding: var(--sp-0h) var(--sp-1h);
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  background: rgba(94,234,212,.12);
+  color: #99f6e4;
+}
+.st-recall-sum {
+  font-size: var(--fs-md);
+  color: #f0ebe0;
+  line-height: 1.35;
+}
+.st-recall-sub { display: block; margin-top: var(--sp-0h); }
+.st-recall-score {
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--warn);
+  white-space: nowrap;
+  padding-top: var(--sp-0h);
+}
+.st-recall-empty { padding: var(--sp-1) 0; }
+@media (max-width: 40rem) {
+  .st-recall-item { grid-template-columns: 22px minmax(0, 1fr); }
+  .st-recall-score { grid-column: 2; justify-self: start; }
+}
+
+/* Mobile: compact recall bar so entry content fits in one screen */
+@media (max-width: 56.25rem) {
+  .st-recall-bar {
+    padding: var(--sp-1h) var(--sp-3);
+    margin: 0 0 var(--sp-1h);
+  }
+  .st-recall-head {
+    flex-wrap: nowrap;
+    gap: var(--sp-1h);
+    margin-bottom: var(--sp-1h);
+  }
+  .st-recall-head .muted { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st-recall-empty { padding: var(--sp-0h) 0; }
+  .st-recall-bar .st-recall-head .ghost {
+    min-height: 2rem;
+    height: 2rem;
+    padding: 0 var(--sp-2h);
+  }
+}
+
+
+/* ===== RESPONSIVE: no horizontal page scroll ===== */
+/* Global containment: grids/flex children must be allowed to shrink below content min-size */
+.tab-panel > *,
+.st-layout > *,
+.layout > *,
+.works-layout > *,
+.az-layout > *,
+.partner-layout > *,
+.bond-layout > * {
+  min-width: 0;
+  max-width: 100%;
+}
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+/* Ambient orbs never expand document scroll metrics */
+.ambient {
+  max-width: none; /* keep decorative size */
+  contain: layout paint;
+}
+@media (max-width: 56.25rem) {
+  .st-entry-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 32.5rem) {
+  /* 田字格：窄屏仍 2 列，卡片紧凑以在首屏展示 P1–P4 */
+  .st-entry-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: var(--sp-2h); padding-left: var(--sp-5); padding-right: var(--sp-5); }
+  .st-entry-card { padding: var(--sp-3h); gap: var(--sp-1h); min-height: 0; }
+  .st-entry-card strong { font-size: var(--fs-md); }
+  .st-entry-card .card-meta { display: none; }
+  .st-composer { grid-template-columns: minmax(0, 1fr); }
+  .st-composer .composer-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+}
+
+

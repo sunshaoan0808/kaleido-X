@@ -1,0 +1,84 @@
+/* Kaleido unified dialog styles (S9.21) — backdrop + dialog + focus styles */
+.kaleido-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 1000);
+  background: rgba(0, 0, 0, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.kaleido-dialog {
+  background: var(--surface, #fff);
+  color: var(--text, #111);
+  border: 1px solid var(--border, rgba(0, 0, 0, .1));
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .18);
+  width: min(420px, 100%);
+  padding: 18px 20px;
+  box-sizing: border-box;
+}
+.kaleido-dialog-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.kaleido-dialog-msg {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary, #555);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 12px;
+}
+.kaleido-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  font-size: 14px;
+  border: 1px solid var(--border, rgba(0, 0, 0, .15));
+  border-radius: 8px;
+  background: var(--surface-2, #f4f4f5);
+  color: var(--text, #111);
+  margin-bottom: 14px;
+  outline: none;
+}
+.kaleido-dialog-input:focus {
+  border-color: var(--accent, #4f8cff);
+  box-shadow: 0 0 0 3px rgba(79, 140, 255, .2);
+}
+.kaleido-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.kaleido-dialog-btn {
+  min-height: 36px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border, rgba(0, 0, 0, .12));
+  background: var(--surface-2, #f4f4f5);
+  color: var(--text, #111);
+}
+.kaleido-dialog-btn-primary {
+  background: var(--accent, #4f8cff);
+  border-color: transparent;
+  color: #fff;
+}
+.kaleido-dialog-btn-danger {
+  background: var(--err, #ef4444);
+  border-color: transparent;
+  color: #fff;
+}
+.kaleido-dialog-btn:focus-visible,
+.kaleido-dialog-input:focus-visible {
+  outline: 2px solid var(--accent, #4f8cff);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kaleido-dialog-backdrop { transition: none; }
+}

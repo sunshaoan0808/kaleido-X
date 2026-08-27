@@ -1,0 +1,381 @@
+/* ========== Dual UI: shared chrome ========== */
+/* L4: mobile fallback for --bnav-h (avoids 0px overlay height before
+       applyAutoUi measures, or when measurement returns 0). Real value
+       measured by JS only when offsetHeight>0, so this stays as the
+       shallow default on mobile until a real measure lands. */
+@media (max-width: 56.25rem) {
+  :root { --bnav-h: 3.5rem; }
+}
+/* 移动端：chat-setup 卡片内 label 文本与 select 分行，避免「角色卡」被压缩成「色卡」 */
+@media (max-width: 56.25rem) {
+  .chat-setup-card .inline {
+    flex-wrap: wrap;
+    row-gap: var(--sp-1h);
+  }
+  .chat-setup-card .inline select {
+    flex-basis: 100%;
+    flex-grow: 1;
+  }
+}
+.page-title-wrap { display: none; align-items: center; gap: var(--sp-2); min-width: 0; flex: 1; }
+.page-title { font-weight: 600; font-size: var(--fs-base); letter-spacing: var(--tracking-ui); line-height: var(--lh-ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-mode-btn {
+  margin: 0;
+  width: auto;
+  min-width: var(--sp-6);
+  min-height: var(--sp-6);
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 0;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  overflow: visible;
+}
+.ui-mode-btn::after { display: none; }
+.ui-mode-btn.active {
+  background: linear-gradient(135deg, rgba(212,168,83,.28), rgba(183,140,58,.22));
+  color: var(--text-inverse);
+  box-shadow: 0 0 12px rgba(212,168,83,.25);
+}
+.ui-mode-btn:hover:not(.active) {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+/* S9.24: mobile-only/desktop-only via @media (no data-ui dependency) */
+/* S9.22: touch targets ≥40px (WCAG 2.5.5) on mobile — small icon/text buttons */
+@media (max-width: 56.25rem) {
+  .ui-mode-btn,
+  .st-tool-btn,
+  .st-mode-btn,
+  .st-toggle-btn,
+  .btn-sm,
+  .btn-file,
+  .tool,
+  button.ghost,
+  .tab {
+    min-height: 2.5rem;
+  }
+}
+@media (min-width: 56.25rem) {
+  .mobile-only { display: none !important; }
+  .page-title-wrap { display: none !important; }
+}
+@media (max-width: 56.25rem) {
+  .desktop-only { display: none !important; }
+  .desktop-tabs { display: none !important; }
+}
+
+/* Desktop refinements: top-tab chrome (S9.24: @media instead of data-ui) */
+@media (min-width: 56.25rem) {
+  .main-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-left: auto;
+  }
+}
+
+/* ========== Mobile App UI ========== */
+@media (max-width: 56.25rem) {
+  body { 
+  overscroll-behavior: none;
+ }
+}
+@media (max-width: 56.25rem) {
+  #app { 
+  min-height: 100vh;
+  min-height: 100dvh;
+ }
+}
+@media (max-width: 56.25rem) {
+  .main-view { 
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+ }
+ .main-view:has(.login-view) {
+  overflow-y: auto;
+ }
+}
+@media (max-width: 56.25rem) {
+  .login-view.card { 
+  margin: max(6vh, env(safe-area-inset-top, 0px) + var(--sp-5)) var(--sp-4) var(--sp-5);
+  max-width: none;
+  width: auto;
+  padding: var(--sp-6) var(--sp-6h);
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+ }
+}
+@media (max-width: 56.25rem) {
+  .top { 
+  padding: var(--sp-2h) var(--sp-3);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  gap: var(--sp-2);
+  flex-wrap: nowrap;
+ }
+}
+@media (max-width: 56.25rem) {
+  .brand strong {  display: none;  }
+}
+@media (max-width: 56.25rem) {
+  #who {  display: none;  }
+}
+@media (max-width: 56.25rem) {
+  .page-title-wrap { 
+  display: flex;
+  flex: 1;
+  min-width: 0;
+ }
+}
+@media (max-width: 56.25rem) {
+  .actions { 
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  margin-left: 0;
+  flex-shrink: 0;
+ }
+}
+@media (max-width: 56.25rem) {
+  .actions #logout-btn { 
+  padding: var(--sp-1t) var(--sp-2h);
+  font-size: var(--fs-sm);
+ }
+}
+@media (max-width: 56.25rem) {
+  #mobile-sessions-btn { 
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 var(--sp-2h);
+  font-size: var(--fs-xl);
+  line-height: 1;
+ }
+}
+
+/* Bottom nav */
+@media (max-width: 56.25rem) {
+  .bottom-nav { 
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: var(--z-dropdown);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  padding: var(--sp-1h) 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: rgba(11,13,18,.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-top: var(--sp-0h) solid var(--border);
+  box-shadow: 0 -8px 32px rgba(0,0,0,.35);
+ }
+}
+
+/* Tab panels fill remaining space under header */
+@media (max-width: 56.25rem) {
+  .tab-panel { 
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 56.25rem) {
+  #tab-chat { 
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+ }
+}
+
+
+/* Chat: hide desktop aside, full-bleed messages */
+@media (max-width: 56.25rem) {
+  .layout { 
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  .layout > aside {  display: none;  }
+}
+@media (max-width: 56.25rem) {
+  .layout > main { 
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  .chat-toolbar { 
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-2h);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+ }
+}
+@media (max-width: 56.25rem) {
+  .chat-toolbar > label.inline { 
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+ }
+}
+@media (max-width: 56.25rem) {
+  .chat-toolbar select { 
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+ }
+}
+@media (max-width: 56.25rem) {
+  #story-messages { 
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--sp-3);
+  box-sizing: border-box;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  #story-composer { 
+  padding: var(--sp-2h) 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: var(--sp-0h) solid var(--border);
+  background: rgba(11,13,18,.9);
+  backdrop-filter: blur(10px);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  #story-composer textarea { 
+  min-height: 2.75rem;
+  font-size: var(--fs-lg); /* prevent iOS zoom */
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  .composer-actions button { 
+  min-height: 2.5rem;
+ }
+}
+
+/* Partner / works stack */
+@media (max-width: 56.25rem) {
+  .partner-layout { 
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--sp-3);
+  gap: var(--sp-3);
+  min-width: 0;
+  max-width: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  .works-layout { 
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+ }
+}
+@media (max-width: 56.25rem) {
+  .works-tree-pane { 
+  display: flex;
+  width: 100% !important;
+  max-width: 100%;
+  max-height: 34vh;
+  border-right: 0;
+  border-bottom: var(--sp-0h) solid var(--border);
+ }
+}
+@media (max-width: 56.25rem) {
+  .works-editor-pane {  min-height: 46vh; min-width: 0; max-width: 100%;  }
+}
+@media (max-width: 56.25rem) {
+  .works-editor-split[data-mode="split"] { 
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+ }
+}
+@media (max-width: 56.25rem) {
+  .works-preview { 
+  border-left: 0;
+  border-top: var(--sp-0h) solid var(--border);
+  min-height: 11.25rem;
+ }
+}
+
+
+
+
+@media (max-width: 56.25rem) {
+  html[data-immersive="1"] .tab-panel:not(.hidden) {
+    bottom: 0 !important;
+  }
+}
+@media (max-width: 56.25rem) {
+  button.ghost,
+  button.ghost.sm,
+  button:not(.ghost),
+  a.btn,
+  .btn-sm,
+  .item-list .item,
+  aside .item,
+  .st-option-chip,
+  .st-continue-card .st-continue-cta,
+  #mobile-sessions-btn,
+  #crawl-search-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .an-sug .ghost { min-height: 2.125rem; min-width: auto; }
+}
+/* M2: prevent iOS auto-zoom on focus — inputs/textarea/select >= 16px
+   on mobile (viewport no longer caps maximum-scale=1, so >=16px avoids
+   the focus-triggered zoom). Desktop untouched. */
+@media (max-width: 56.25rem) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

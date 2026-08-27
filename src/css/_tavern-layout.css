@@ -1,0 +1,111 @@
+/* ST-3 Story Tavern */
+/* ===== ST-3 Story Tavern — Phase 2 "ink-and-ember" theater UI ===== */
+.st-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  background: var(--st-ink);
+}
+@media (min-width: 48rem) and (max-width: 64rem) {
+  .st-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+.st-banner {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3h); padding: var(--sp-3) var(--sp-4h);
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  background:
+    linear-gradient(90deg, rgba(212,168,83,.10), rgba(248,113,113,.08));
+  border-bottom: var(--sp-0h) solid rgba(212,168,83,.22);
+  color: var(--gold-light); font-size: var(--fs-md);
+}
+.st-banner .banner-copy {
+  display: flex; align-items: center; gap: var(--sp-2h);
+  min-width: 0; flex: 1;
+}
+.st-banner svg {
+  flex-shrink: 0; opacity: .95;
+  color: var(--st-ember);
+}
+
+/* Sidebar — emptied (Pack库/会话/存档 moved to 档案馆) */
+.st-side {
+  display: none;
+}
+.st-side-section { display: flex; flex-direction: column; gap: var(--sp-2); }
+.st-side-section .aside-head {
+  padding: 0 var(--sp-1h);
+  font-size: var(--fs-sm);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.st-side-section .aside-head .row { gap: var(--sp-1h); flex-wrap: wrap; }
+
+/* Main — the "stage" */
+.st-main {
+  display: flex; flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  background: var(--st-stage-vignette), var(--surface-0);
+  position: relative;
+}
+
+/* S9.25: PACK 库独立页面布局 */
+.st-packs-page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.st-packs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.st-packs-head h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--text);
+}
+.st-pack-list-full {
+  max-height: none;
+  overflow: visible;
+}
+
+/* S9.25b: 档案馆分区样式 */
+.st-packs-section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--sp-3) 0;
+  opacity: .5;
+}
+.st-packs-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* S8.16 mobile: non-immersive tavern (entry page) sits above the fixed
+   bottom-nav. Reserve its height + a gap so P1–P4 cards are never covered. */
+@media (max-width: 56.25rem) {
+  html:not([data-immersive="1"]) #tab-tavern {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}

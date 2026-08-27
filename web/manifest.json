@@ -1,0 +1,14 @@
+{
+  "name": "Kaleido · 沉浸叙事工作台",
+  "short_name": "Kaleido",
+  "description": "AI 叙事引擎 · 角色扮演 · 文学创作 · 世界构建",
+  "start_url": "/web/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
+  "icons": [],
+  "categories": ["productivity", "entertainment"],
+  "lang": "zh-CN",
+  "scope": "/web/"
+}

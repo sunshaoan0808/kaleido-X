@@ -1,0 +1,46 @@
+# Kaleido .gitignore
+
+# Dependencies
+node_modules/
+
+# Rust build artifacts
+target/
+.cargo/config.toml
+
+# Python
+*.pyc
+__pycache__/
+
+# Frontend build output (build via `npm run build:vite`)
+web/assets/index-*.js
+web/assets/index-*.css
+
+# Foliate-js vendor (vendored separately)
+web/foliate-js/
+
+# Novel workspace (user data)
+novel_workspace/
+
+# Runtime data (never versioned; includes secrets/)
+data/
+
+# Embedding model cache / venvs
+.venv-embed/
+.venv-asr/
+.graphify-out/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# E2E test artifacts (screenshots, fixtures with real sessions)
+tests/e2e/artifacts/
+tests/e2e/fixtures/ls_real.json
+
+# Stray local sqlite
+sessions.db
+
+# OS / editor
+.DS_Store
+*.swp

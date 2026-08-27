@@ -1,0 +1,220 @@
+
+/* Focus bar */
+.st-focus-bar {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2h) var(--sp-7);
+  border-bottom: var(--sp-0h) solid var(--border);
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  background: rgba(0,0,0,.10);
+}
+.st-focus-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); flex: 1; min-width: 0; }
+.st-focus-chip {
+  width: auto; min-width: auto; margin: 0;
+  padding: var(--sp-1h) var(--sp-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text-secondary); font-size: var(--fs-sm);
+  transition: border-color .16s, background .16s, color .16s;
+}
+.st-focus-chip.active {
+  border-color: var(--st-ember-medium);
+  background: var(--st-ember-weak);
+  color: var(--st-ember);
+}
+.st-focus-chip:hover { border-color: rgba(255,255,255,.18); }
+
+.st-vessel-label { display: flex; align-items: center; gap: var(--sp-1h); color: var(--text-secondary); font-size: var(--fs-sm); }
+.st-vessel-select { width: auto; min-width: 7.5rem; margin: 0; padding: var(--sp-1q) var(--sp-2h); font-size: var(--fs-sm); }
+
+/* Lists inside sidebar */
+.st-pack-list,
+.st-session-list,
+.st-save-list {
+  display: flex; flex-direction: column; gap: var(--sp-1h);
+  max-height: none;
+  margin-bottom: 0;
+}
+.st-pack-list .item,
+.st-session-list .item,
+.st-save-list .item {
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: rgba(255,255,255,.02);
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  position: relative;
+}
+.st-pack-list .item:hover,
+.st-session-list .item:hover,
+.st-save-list .item:hover {
+  background: var(--surface-3);
+  transform: translateX(2px);
+}
+.st-pack-list .item.active,
+.st-session-list .item.active,
+.st-save-list .item.active {
+  border-color: var(--st-ember-medium);
+  background: linear-gradient(135deg, var(--st-ember-weak), rgba(212,168,83,.04));
+  color: var(--text-inverse);
+}
+.st-pack-list .item .t,
+.st-session-list .item .t,
+.st-save-list .item .t { display: flex; align-items: center; gap: var(--sp-2); font-weight: 500; flex-wrap: wrap; }
+.st-pack-list .item .tt {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.st-pack-list .item .d,
+.st-session-list .item .d,
+.st-save-list .item .d { color: var(--text-secondary); font-size: var(--fs-xs); margin-top: var(--sp-0q); line-height: 1.35; }
+.st-pack-list .item .b {
+  display: -webkit-box;
+  margin-top: var(--sp-1h);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  opacity: .92;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.st-pack-list .item.st-pack-item { padding: var(--sp-2t) var(--sp-3) var(--sp-3); }
+.st-badge.src {
+  background: rgba(148,163,184,.12);
+  color: #cbd5e1;
+  border-color: rgba(148,163,184,.28);
+  font-weight: 500;
+}
+/* S9.5: 日间下 src 徽章浅灰字在浅底看不清，反转 */
+html[data-color-scheme="day"] .st-badge.src {
+  color: #475569;
+  background: rgba(71,85,105,.10);
+  border-color: rgba(71,85,105,.22);
+}
+
+/* Worldline view (saves as branched horizontal node flow) */
+.st-subhead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 var(--sp-1h);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.st-worldline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2h);
+  max-height: none;
+  margin-bottom: 0;
+}
+.wl-line {
+  padding: var(--sp-2h) var(--sp-2h) var(--sp-2h);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: rgba(255,255,255,.02);
+  transition: background var(--transition), border-color var(--transition);
+}
+.wl-line.current {
+  border-color: var(--st-ember-medium);
+  background: linear-gradient(135deg, var(--st-ember-weak), rgba(212,168,83,.04));
+}
+.wl-line-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-1h);
+  min-width: 0;
+}
+.wl-line-id {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+.wl-line.current .wl-line-id { color: var(--text-inverse); }
+.wl-tag {
+  padding: 0 var(--sp-1h);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.wl-tag.current {
+  border-color: var(--st-ember-medium);
+  background: var(--st-ember-weak);
+  color: var(--st-ember);
+}
+.wl-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1h);
+}
+.wl-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-0h);
+  min-width: 4.25rem;
+  max-width: 9rem;
+  width: auto;
+  margin: 0;
+  padding: var(--sp-1h) var(--sp-2h);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-3);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+}
+.wl-node:hover {
+  border-color: var(--st-ember-medium);
+  background: var(--st-ember-weak);
+  transform: translateY(-1px);
+}
+.wl-node.active {
+  border-color: var(--st-ember-medium);
+  background: var(--st-ember-weak);
+}
+.wl-node.current {
+  border-color: var(--st-ember);
+  background: linear-gradient(135deg, var(--st-ember), var(--accent-2));
+  color: var(--st-ink);
+}
+.wl-node .wl-label {
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-width: 100%;
+}
+.wl-node .wl-turn {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1;
+}
+.wl-node.current .wl-label,
+.wl-node.current .wl-turn { color: var(--st-ink); }
+

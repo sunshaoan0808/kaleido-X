@@ -1,0 +1,389 @@
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-recall-bar {
+  display: none !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+}
+@media (max-width: 56.25rem) {
+/* ===== S8.13 mobile theater chrome collapse (Q5 revised) ===== */
+/*
+  Mobile immersive: keep status / focus bars visible but compact,
+  so 焦点/换壳/主线支线自由 stay reachable on-device.
+  Only recall-bar is hidden (semantic recall lives in 资料 drawer).
+*/
+html[data-immersive="1"] #tab-tavern .st-recall-bar {
+  display: none !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+}
+
+/* Stage eats the freed height; messages start right under imm-bar */
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-main {
+  padding-top: 0 !important;
+}
+}
+@media (max-width: 56.25rem) {
+/* Q5: play participates in .st-main column flow (not absolute overlay),
+   so status/focus bars right above it take real height (no overlap). */
+html[data-immersive="1"] #st-view-play {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  inset: auto;
+  z-index: auto;
+}
+}
+@media (max-width: 56.25rem) {
+/* Top bar (imm-bar, ~3.25rem) overlays the stage on mobile; when it is shown
+   the message column needs a matching top pad so the first child (fold
+   banner / first line) is not covered. Higher specificity + !important beats
+   the global rules in _immersive-read.css / _immersive-input.css. */
+html[data-immersive="1"]:not(.imm-chrome-hidden) #st-messages {
+  padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
+  padding-left: var(--sp-3h);
+  padding-right: var(--sp-3h);
+}
+html[data-immersive="1"].imm-chrome-hidden #st-messages {
+  padding-top: var(--sp-2) !important;
+  padding-left: var(--sp-3h);
+  padding-right: var(--sp-3h);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #st-composer {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+}
+/* Immersive: collapse recall bar (score badges) by default — desktop too.
+   Desktop keeps a slim hover affordance; mobile fully hides. */
+html[data-immersive="1"] #tab-tavern .st-recall-bar {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0;
+  padding: 0 !important;
+  border: 0;
+}
+@media (min-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-recall-bar {
+  max-height: 34px;
+  opacity: .45;
+  pointer-events: auto;
+  margin-top: 2px;
+}
+html[data-immersive="1"] #tab-tavern .st-recall-bar:hover,
+html[data-immersive="1"] #tab-tavern .st-recall-bar:focus-within {
+  max-height: 240px;
+  opacity: 1;
+  overflow-y: auto;
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-status-row {
+  padding-top: var(--sp-1h);
+  padding-bottom: var(--sp-1h);
+  font-size: var(--fs-sm);
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-focus-bar {
+  padding-top: var(--sp-1h);
+  padding-bottom: var(--sp-1h);
+  max-height: 3.25rem;
+  overflow: auto;
+}
+}
+/* Ensure 资料 toggle visible label on narrow */
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #st-drawer-toggle span {
+  display: none; /* icon only — save imm-bar width */
+}
+}
+
+
+/* ===== S8.14 unified theater dock ===== */
+/* One bottom card: option chips + input row (stop/send) */
+#st-composer.st-composer,
+.st-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1h);
+  grid-template-columns: unset;
+  padding: var(--sp-1h) 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: var(--sp-0h) solid rgba(212,168,83,.16);
+  background: rgba(8,9,13,.94);
+  backdrop-filter: blur(16px);
+  min-width: 0;
+  max-width: 100%;
+}
+#st-composer .st-options,
+.st-composer .st-options {
+  display: none;
+  /* S8.18: wrap all options — no horizontal swipe */
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-1h);
+  padding: 0 0 var(--sp-0h);
+  margin: 0;
+  max-width: 100%;
+  overflow: visible;
+  justify-content: flex-start;
+  align-items: stretch;
+  background: transparent;
+}
+#st-composer .st-options:not(:empty):not(.is-empty),
+.st-composer .st-options:not(:empty):not(.is-empty) {
+  display: flex;
+}
+#st-composer .st-option-chip,
+.st-composer .st-option-chip {
+  flex: 1 1 calc(33.333% - 6px);
+  min-width: min(100%, 118px);
+  max-width: 100%;
+  padding: var(--sp-1) var(--sp-2);
+  min-height: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+.st-composer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  align-items: end;
+  min-width: 0;
+}
+#st-composer textarea,
+.st-composer textarea {
+  resize: none;
+  min-height: 2.5rem;
+  max-height: 7.5rem;
+  padding: var(--sp-2h) var(--sp-3);
+  line-height: 1.45;
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+#st-composer .composer-actions,
+.st-composer .composer-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--sp-1h);
+  align-items: center;
+  flex-shrink: 0;
+}
+#st-stop,
+#st-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 2.75rem;
+  min-height: 2.5rem;
+  margin: 0;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-sm);
+}
+#st-stop .btn-lab,
+#st-send .btn-lab {
+  font-size: var(--fs-sm);
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #st-composer {
+  padding: var(--sp-2) 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  gap: var(--sp-1h);
+}
+}
+@media (max-width: 56.25rem) {
+/* Mobile / immersive: icon-primary compact dock */
+  html[data-immersive="1"] #st-composer {
+    padding: var(--sp-2) 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: var(--sp-1h);
+  }
+}
+
+@media (max-width: 56.25rem) {
+  #st-composer textarea { 
+  min-height: 2.5rem;
+  max-height: 6rem;
+  padding: var(--sp-2h) var(--sp-3);
+  font-size: var(--fs-lg); /* avoid iOS zoom */
+ }
+}
+@media (max-width: 56.25rem) {
+  #st-send { 
+  min-width: 2.625rem;
+  width: 2.625rem;
+  padding: 0;
+ }
+}
+
+
+@media (max-width: 56.25rem) {
+  #st-send .btn-lab { 
+  display: none;
+ }
+}
+
+
+/* Kill old separate options bottom padding that stacked height */
+@media (max-width: 56.25rem) {
+  #st-options:not(.st-composer .st-options) { 
+  /* legacy selector no-op if moved inside */
+ }
+}
+html[data-immersive="1"] #st-composer {
+  flex-shrink: 0;
+}
+html[data-immersive="1"] #st-view-play {
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] #st-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Desktop: keep short labels */
+@media (min-width: 56.25rem) {
+  html #st-stop,
+  html #st-send {
+    min-width: 4.5rem;
+    padding: 0 var(--sp-3h);
+  }
+}
+
+/* S8.14 kill external options pad */
+@media (max-width: 56.25rem) {
+  #st-composer #st-options { 
+  padding: 0;
+  margin: 0;
+ }
+}
+
+/* ===== S8.15 mobile theater: pin dock, kill outer page scroll =====
+   Bug: 移动端拉到底输入框跟着动.
+   Root: immersive still inherits .main-view padding-bottom (bnav 64px) + min-height 100dvh,
+   so document/#app can scroll ~64px; #st-composer is sticky inside play but rides the outer page.
+   Fix: lock html/body/#app/.main-view to viewport in immersive; drop bnav pad; only #st-messages scrolls.
+*/
+html[data-immersive="1"],
+html[data-immersive="1"] body {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+html[data-immersive="1"] #app {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+html[data-immersive="1"] .main-view,
+html[data-immersive="1"] #main-view {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0 !important;
+  padding-bottom: 0 !important; /* bnav hidden in immersive — pad was the outer scroll fuel */
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] .top {
+  flex-shrink: 0;
+}
+/* S8.32: immersive top bar must sit above tab-tavern's fixed MAIN shell
+   (which otherwise intercepts clicks over the back/资料 buttons). */
+html[data-immersive="1"] .top {
+  position: relative;
+  z-index: 300;
+}
+/* Theater play: messages only scroll; dock is flex foot, not sticky-on-page */
+html[data-immersive="1"] #st-view-play {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+html[data-immersive="1"] #st-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+html[data-immersive="1"] #st-composer {
+  position: relative; /* not sticky — flex foot of stage */
+  bottom: auto;
+  flex-shrink: 0;
+  z-index: var(--z-base);
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-adventure.tab-panel:not(.hidden) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+}
+@media (max-width: 56.25rem) {
+/* Mobile immersive tab fills shell under imm-bar; no panel-level page scroll */
+html[data-immersive="1"] #tab-tavern.tab-panel:not(.hidden), html[data-immersive="1"] #tab-chat.tab-panel:not(.hidden), html[data-immersive="1"] #tab-story.tab-panel:not(.hidden) { html[data-immersive="1"] #tab-adventure.tab-panel:not(.hidden) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+} }
+}
+
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-main {
+  min-height: 0 !important;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+}
+@media (max-width: 56.25rem) {
+html[data-immersive="1"] #tab-tavern .st-layout { html[data-immersive="1"] #tab-tavern .st-main {
+  min-height: 0 !important;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+} }
+}
+
+/* Chat immersive: same pin — only #messages scrolls */
+html[data-immersive="1"] #tab-chat #messages {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+html[data-immersive="1"] #tab-chat #composer {
+  position: relative;
+  flex-shrink: 0;
+}
+
+

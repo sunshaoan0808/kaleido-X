@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <title>📚 书架 - Kaleido</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📚</text></svg>" />
+    <!-- ReadAware-style: foliate-js engine (EPUB/PDF/MOBI support) -->
+    <script type="module" src="/web/bookshelf/foliate-js/loader.js"></script>
+    <!-- ReadAware-style: bridge layer for EPUB fallback + HTML sanitization -->
+    <script type="module" src="/web/bookshelf/foliate-bridge.js?v=1786336386"></script>
+    <script type="module" crossorigin src="/web/bookshelf/assets/index-DiShLB2e.js?v=3"></script>
+    <!-- FoliateReader: paginated reading for API markdown content -->
+    <script type="module" src="/web/bookshelf/foliate-reader/reader.js"></script>
+    <script type="module" src="/web/bookshelf/foliate-book-manager.js?v=1785521816"></script>
+    <script type="module" src="/web/bookshelf/opds-manager.js"></script>
+    <link rel="stylesheet" href="/web/bookshelf/foliate-reader/style.css">
+    <link rel="stylesheet" crossorigin href="/web/bookshelf/assets/index-D-rm2kp-.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // 阅读模式隐藏常驻浮层按钮（📤导入书籍 / 🌐OPDS书库），避免遮挡阅读内容
+      (function () {
+        function inReading() {
+          if (location.hash.match(/^#\/reader\//)) return true;
+          return !!document.querySelector('.fbm-overlay');
+        }
+        function syncFloatBtns() {
+          const reading = inReading();
+          document.querySelectorAll('#opds-btn, .fbm-import-btn').forEach(function (el) {
+            el.style.display = reading ? 'none' : '';
+          });
+        }
+        window.addEventListener('hashchange', syncFloatBtns);
+        window.addEventListener('load', syncFloatBtns);
+        var mo = new MutationObserver(syncFloatBtns);
+        mo.observe(document.documentElement, { childList: true, subtree: true });
+        syncFloatBtns();
+      })();
+    </script>
+  </body>
+</html>

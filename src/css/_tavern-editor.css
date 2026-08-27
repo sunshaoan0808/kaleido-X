@@ -1,0 +1,114 @@
+/* Chapter / Lore / Node panels — ink-ember polish */
+.st-chapter-view {
+  padding: var(--sp-3) var(--sp-3h);
+  border: 1px solid rgba(212,168,83,.14);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(212,168,83,.05), transparent 40%),
+    rgba(0,0,0,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+.st-chapter-view textarea {
+  width: 100%; min-height: 10rem;
+  background: var(--surface-1); color: var(--text);
+  border: 1px solid rgba(212,168,83,.12); border-radius: var(--radius);
+  padding: var(--sp-3); line-height: 1.55;
+  font-family: ui-serif, "Noto Serif CJK SC", "Songti SC", Georgia, serif;
+}
+.st-chapter-view textarea:focus {
+  outline: none;
+  border-color: var(--st-ember-medium);
+  box-shadow: 0 0 0 3px rgba(212,168,83,.12);
+}
+.st-chapter-view textarea:focus-visible {
+  outline: 2px solid rgba(212,168,83,.55);
+  outline-offset: 1px;
+}
+
+.st-pack-editor {
+  padding: var(--sp-3) var(--sp-3h);
+  background:
+    linear-gradient(180deg, rgba(212,168,83,.04), transparent 50%),
+    rgba(0,0,0,.2);
+  border: 1px solid rgba(212,168,83,.12);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: var(--sp-2h);
+}
+.st-import-progress { padding: var(--sp-2h); font-size: var(--fs-md); color: var(--st-ember); }
+
+.st-lore-panel,
+.st-node-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2h);
+  padding: var(--sp-2h);
+  border-radius: var(--radius);
+  border: 1px solid rgba(212,168,83,.10);
+  background: rgba(7,8,12,.35);
+}
+.st-node-panel { margin-top: var(--sp-2); }
+.st-lore-panel .aside-head,
+.st-node-panel .aside-head {
+  border-bottom: var(--sp-0h) solid rgba(212,168,83,.10);
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-0h);
+}
+.st-lore-editor,
+.st-node-editor {
+  display: flex; flex-direction: column; gap: var(--sp-2h);
+  padding: var(--sp-3) var(--sp-3h);
+  border: 1px solid rgba(212,168,83,.16);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(212,168,83,.07), transparent 55%),
+    var(--surface-1);
+  box-shadow: 0 8px 28px rgba(0,0,0,.28);
+  animation: stFadeDown 200ms var(--st-pop) both;
+}
+.st-lore-editor label,
+.st-node-editor label { font-size: var(--fs-sm); color: var(--text-secondary); }
+.st-lore-editor input,
+.st-node-editor input,
+.st-lore-editor textarea,
+.st-node-editor textarea {
+  border-color: rgba(212,168,83,.12);
+  background: rgba(0,0,0,.25);
+}
+.st-lore-editor input:focus,
+.st-node-editor input:focus,
+.st-lore-editor textarea:focus,
+.st-node-editor textarea:focus {
+  outline: none;
+  border-color: var(--st-ember-medium);
+  box-shadow: 0 0 0 3px rgba(212,168,83,.12);
+}
+.st-lore-editor input:focus-visible,
+.st-node-editor input:focus-visible,
+.st-lore-editor textarea:focus-visible,
+.st-node-editor textarea:focus-visible {
+  outline: 2px solid rgba(212,168,83,.55);
+  outline-offset: 1px;
+}
+.st-lore-editor textarea { min-height: 5.5rem; }
+.st-node-editor textarea { min-height: 4rem; }
+.st-lore-list .item,
+.st-node-list .item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color .15s var(--st-pop), background .15s var(--st-pop), transform .15s var(--st-pop);
+}
+.st-lore-list .item:hover,
+.st-node-list .item:hover {
+  border-color: rgba(212,168,83,.18);
+  background: rgba(212,168,83,.06);
+  transform: translateX(2px);
+}
+.st-lore-list .item.active,
+.st-node-list .item.active {
+  border-color: var(--st-ember-medium);
+  background: var(--st-ember-weak);
+}
+.st-lore-list .item small,
+.st-node-list .item small { display: block; opacity: .7; font-size: var(--fs-xs); }
+.st-node-list .item .ex { color: var(--st-ember); font-size: var(--fs-xs); }
+

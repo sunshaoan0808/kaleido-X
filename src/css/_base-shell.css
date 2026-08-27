@@ -1,0 +1,180 @@
+/* Main shell */
+#main-view, .main-view {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3h);
+  padding: var(--sp-2h) var(--sp-4h);
+  border-bottom: var(--sp-0h) solid var(--border);
+  background: rgba(11,13,18,.72);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dropdown);
+  flex-wrap: nowrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2h);
+  white-space: nowrap;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight);
+}
+.brand strong { color: var(--text-inverse); }
+.logo-mark {
+  width: var(--sp-7); height: var(--sp-7);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 0 0 18px rgba(212,168,83,.45);
+  position: relative;
+  flex-shrink: 0;
+}
+.logo-mark::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-1);
+  box-shadow: inset 0 0 8px rgba(212,168,83,.25);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1h);
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: var(--sp-1) var(--sp-0h);
+  /* subtle right-edge fade: hints that more tabs exist */
+  -webkit-mask-image: linear-gradient(to right, var(--bg-black) calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, var(--bg-black) calc(100% - 28px), transparent 100%);
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+/* Tab pills: override global button width/overflow/::after that clip CJK text */
+.tab {
+  margin: 0;
+  width: auto;
+  min-width: max-content;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  padding: 0 var(--sp-3h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: var(--fs-md);
+  line-height: 1.25;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  text-align: center;
+  overflow: visible;
+  vertical-align: middle;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+.tab::after { display: none; } /* kill global button sheen that sits on text */
+.tab:hover:not(.active) {
+  background: var(--surface-3);
+  color: var(--text);
+  transform: none; /* don't lift tabs like primary CTA */
+  filter: none;
+  box-shadow: none;
+}
+.tab.active {
+  border-color: rgba(212,168,83,.55);
+  color: var(--gold-light, #fde68a);
+  background: linear-gradient(135deg, rgba(212,168,83,.18), rgba(183,140,58,.12));
+  box-shadow: 0 0 20px rgba(212,168,83,.18), inset 0 1px 0 rgba(255,255,255,.06);
+  transform: none;
+  filter: none;
+}
+
+.actions { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); }
+.actions button {
+  margin-top: 0;
+  min-height: 2.75rem;
+  height: 2.75rem;
+  font-size: var(--fs-md);
+  font-family: inherit;
+}
+
+.tab-panel {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 160ms ease;
+}
+.tab-panel.is-entering {
+  animation: tabFadeIn 180ms ease both;
+}
+@media (max-width: 56.25rem) {
+  .tab-panel.is-entering {
+    animation: none;
+  }
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Layouts — minmax(0,1fr) prevents grid auto-min content blowout (mobile sideways scroll) */
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+aside {
+  border-right: var(--sp-0h) solid var(--border);
+  padding: var(--sp-3);
+  overflow: auto;
+  background: rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.aside-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  padding: 0 var(--sp-1);
+}
+
+.item-list { max-height: 10.62rem; overflow: auto; margin-bottom: var(--sp-2h); }
+

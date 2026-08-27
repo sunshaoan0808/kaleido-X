@@ -1,0 +1,84 @@
+/* Single-weight CJK fonts synthesize ugly 800/900 — cap emphasis */
+strong, b, h1, h2, h3, h4 {
+  font-weight: 600;
+  letter-spacing: var(--tracking-ui);
+}
+
+.hidden { display: none !important; }
+
+/* Ambient orbs — pure ink-ember, no purple cast */
+.ambient {
+  position: fixed;
+  pointer-events: none;
+  z-index: var(--z-below);
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: .22;
+  will-change: transform;
+}
+.ambient-1 {
+  width: 32.5rem; height: 32.5rem;
+  background: radial-gradient(circle, rgba(212,168,83,.22), transparent 70%);
+  top: -180px; left: -120px;
+  opacity: .20;
+  animation: ambientDriftA 22s ease-in-out infinite alternate;
+}
+.ambient-2 {
+  width: 26.25rem; height: 26.25rem;
+  background: radial-gradient(circle, rgba(183,140,58,.14), transparent 72%);
+  bottom: -120px; right: -80px;
+  opacity: .16;
+  animation: ambientDriftB 28s ease-in-out infinite alternate;
+}
+@keyframes ambientDriftA {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to   { transform: translate3d(48px, 28px, 0) scale(1.08); }
+}
+@keyframes ambientDriftB {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to   { transform: translate3d(-36px, -22px, 0) scale(1.06); }
+}
+
+/* Soften expensive ambient blur on low-end mobile */
+@media (max-width: 56.25rem) {
+  .ambient { 
+  filter: blur(48px);
+  opacity: .10;
+ }
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: clip;
+}
+.main-view {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Long unbroken strings (URLs, tokens, paths) */
+.preview,
+.works-path,
+.works-cwd,
+.az-selected-title,
+.bubble,
+#st-status,
+#st-recall-meta {
+  overflow-wrap: anywhere;
+}
+/* S13g: pre 默认 monospace 与全局 ui-monospace 割裂 → 统一 mono 栈 */
+.preview,
+#jobs-out,
+pre.code,
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
