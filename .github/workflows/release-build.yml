@@ -1,8 +1,10 @@
 name: release-build
 
 on:
-  push:
-    branches: [main]
+  # NOTE: CI is temporarily paused until a self-hosted runner is registered for
+  # this repo (account is on GitHub Free, so `ubuntu-latest` has no quota and
+  # `[self-hosted, hk-vps]` has no runner here yet). Re-enable the `push` trigger
+  # when the runner is configured.
   workflow_dispatch:
 
 env:
@@ -14,7 +16,7 @@ permissions:
 
 jobs:
   build-release:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, hk-vps]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
