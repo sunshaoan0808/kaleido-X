@@ -8605,6 +8605,39 @@ async fn start_turn(
                         }
                     }
                 }
+                // [吞噬系统 auto-tick] 每回合末自动推进（与世界书定时同位置）。
+                // Needs 衰减（天气联动）+ 灾变由 tick_decay 内部触发。
+                {
+                    let rough = sess.world_climate.atmosphere != kaleido_core::world_climate::WorldAtmosphere::Breathable;
+                    let clear = sess.game_clock.weather == "晴";
+                    // Needs 自动建档（present 新角色补默认）
+                    for cid in sess.present_character_ids.clone() {
+                        sess.needs.entry(cid).or_insert_with(kaleido_core::needs::Needs::default);
+                    }
+                    for needs in sess.needs.values_mut() { needs.tick_decay(rough, clear); }
+                    // Chaos 压力（启用时；pending 未交付时 tick 内部跳过）
+                    if sess.chaos.enabled {
+                        sess.chaos.tick();
+                        // roll → arm（用 turn 做确定性 roll，避免 rand 依赖；阈值内触发）
+                        let roll = (sess.turn.wrapping_mul(2654435761) >> 8) % 100;
+                        if sess.chaos.should_trigger(roll as u32) && !sess.chaos.has_pending() {
+                            let char_name = sess.present_character_ids.first()
+                                .and_then(|cid| pack.characters.iter().find(|c| c.id == *cid).map(|c| c.name.clone()))
+                                .unwrap_or_else(|| "角色".into());
+                            let pool_len = kaleido_core::chaos::chance_pool().len();
+                            sess.chaos.arm_event(&char_name, (sess.turn as usize) % pool_len.max(1));
+                        }
+                    }
+                    // 羁绊衰减（10 回合一步）
+                    for b in sess.relationships.values_mut() { b.maybe_decay(); }
+                    // Journal 冷却（在场角色）
+                    let sid_c = sess.session_id.clone();
+                    for cid in sess.present_character_ids.clone() { sess.journal.cool(&sid_c, &cid); }
+                    // Growth 褪色（30 回合）
+                    sess.growth.fade_old(sess.turn, 30);
+                    // Dreams 跨夜检测（day 推进即 rollover）
+                    sess.dream.check_rollover(Some(&sess.session_id.clone()), sess.game_clock.day as i32, true);
+                }
                 // [时间天气系统] 回合结束推进权威时钟：
                 // 1) 若正文含 [时间推进: <时段|次日|N天后>] 标注 → 显式跳转；
                 //    2) 否则默认顺移 1 个时段（跨日 day+1）。
