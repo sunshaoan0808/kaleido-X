@@ -396,6 +396,11 @@ pub struct PackCharacterRef {
     /// AI 每轮生成后自动维护；前端可查看/手动分析/精编。serde default 兼容旧 pack。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive: Option<crate::character_archive::CharacterArchive>,
+    /// [吞噬 Front Porch AI pockets.dart] 初始口袋与衣物（蒸馏/卡面播种）。
+    /// worn = 身上穿的，carrying = 身上带的，均为 display 字符串（如 "jacket (rain-soaked)"）。
+    /// 旧 pack 无此字段 → 空口袋，不影响既有会话。
+    #[serde(default)]
+    pub starting_wardrobe: crate::pockets::Pockets,
 }
 
 #[cfg(test)]
@@ -431,6 +436,7 @@ mod sprite_ref_tests {
             voice: None,
             archive: None,
             avatar: None,
+                starting_wardrobe: Default::default(),
         };
         ch.expressions
             .insert("开心".into(), "https://img/x/1.png".into());
@@ -1594,6 +1600,11 @@ pub struct TavernMessage {
     pub created_at: String,
     #[serde(default)]
     pub options: Vec<String>,
+    /// [Swipe 多备选 吞噬 Front Porch AI swipes] 同条回复的备选正文（regen 不覆盖，左右切换）。
+    #[serde(default)]
+    pub swipes: Vec<String>,
+    #[serde(default)]
+    pub swipe_index: usize,
     #[serde(default)]
     pub engine_tag: Option<EngineTag>,
     /// 消息流内嵌程序卡 HTML(吸收自梨园 show_html);前端沙箱 iframe 渲染。
@@ -2363,6 +2374,57 @@ pub struct TavernSession {
     /// 游戏时钟+天气权威状态（时间/天气约束系统）。旧数据 default 播种（清晨/晴）。
     #[serde(default)]
     pub game_clock: crate::time_clock::GameClock,
+    /// [吞噬 Front Porch AI pockets.dart] 口袋与衣物（per-character, per-session）。
+    /// per-character 口袋（worn/carrying/setAside），per-session 隔离。key = character_id。
+    /// GameClock 的 day 用于 setAside 晨间过期（clothing 次日清晨过期，possessions 永不过期）。
+    #[serde(default)]
+    pub pockets: std::collections::HashMap<String, crate::pockets::Pockets>,
+    /// [P1-B Porch Life À la carte] 口袋开关（默认开）。关时提示词不注入口袋块，
+    /// 但数据仍保留（可再打开）。对齐 Front Porch Porch Life "Own switch. Does not
+    /// need the Realism Engine."。
+    #[serde(default = "default_true")]
+    pub pockets_enabled: bool,
+    /// [P2+P3 吞噬 Front Porch AI] Needs 六维 + Growth Rings + World Climate（per-character/per-session，默认空）。
+    #[serde(default)]
+    pub needs: std::collections::HashMap<String, crate::needs::Needs>,
+    #[serde(default)]
+    pub growth: crate::character_arc::GrowthStore,
+    #[serde(default)]
+    pub world_climate: crate::world_climate::WorldClimate,
+    /// [P4 吞噬 Front Porch AI chaos/tiers/objectives/dreams] Chaos + Tiers + 目标 + 夜梦（默认空/关）。
+    #[serde(default)]
+    pub chaos: crate::chaos::ChaosState,
+    #[serde(default)]
+    pub milestones: Vec<crate::relationship_tiers::Milestone>,
+    #[serde(default)]
+    pub objectives: Vec<crate::objectives::Objective>,
+    #[serde(default)]
+    pub ambitions: Vec<crate::objectives::Ambition>,
+    #[serde(default)]
+    pub dream: crate::dreams::DreamState,
+    #[serde(default)]
+    pub episodes: crate::dreams::EpisodeStore,
+    /// [Journal 存量 吞噬 Front Porch AI journal_store] per-session卡片库（热卡常驻，冷卡按需召回）。
+    #[serde(default)]
+    pub journal: crate::journal_store::JournalStore,
+    /// [羁绊活数值 吞噬 Front Porch AI relationship_service] per-character bond/trust 动态。
+    #[serde(default)]
+    pub relationships: std::collections::HashMap<String, crate::relationship::Bond>,
+    /// [Swipe 多备选] 待继承的备选正文（reroll 时旧正文暂存，下条 assistant 消息继承）。
+    #[serde(default)]
+    pub pending_swipes: Vec<String>,
+    /// [承诺债务 吞噬 Front Porch AI promise_debt] open/kept/broken 追踪。
+    #[serde(default)]
+    pub promises: crate::promise::PromiseStore,
+    /// [偏好加权 吞噬 Front Porch AI preference_scoring] per-character likes/dislikes。
+    #[serde(default)]
+    pub preferences: std::collections::HashMap<String, crate::promise::Prefs>,
+    /// [在场推导 吞噬 Front Porch AI presence_derive] per-character occupation/hours/workdays。
+    #[serde(default)]
+    pub presence: std::collections::HashMap<String, crate::mood_presence::Presence>,
+    /// [世界书定时 吞噬 Front Porch AI lorebook_timed_effects] per-session sticky/cooldown（消息序号计）。
+    #[serde(default)]
+    pub timed_world_info: crate::st_world_info::TimedWorldInfo,
     /// S4: 导演计划（吞噬 denova director_plan）。None = 尚未生成。仅为叙事意图，不改写 locked_beats。
     #[serde(default)]
     pub director_plan: Option<DirectorPlan>,
@@ -3108,6 +3170,7 @@ fn build_demo_pack() -> StoryPack {
             voice: None,
             archive: None,
                 avatar: None,
+                starting_wardrobe: Default::default(),
             },
             PackCharacterRef {
                 id: "cc-linwan".into(),
@@ -3138,6 +3201,7 @@ fn build_demo_pack() -> StoryPack {
             voice: None,
             archive: None,
                 avatar: None,
+                starting_wardrobe: Default::default(),
             },
         ],
         world_book_ids: vec![],
@@ -3671,6 +3735,24 @@ mod opening_tests {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: Default::default(),
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -3703,6 +3785,7 @@ mod opening_tests {
             voice: None,
             archive: None,
             avatar: None,
+                starting_wardrobe: Default::default(),
         }
     }
 
@@ -3850,6 +3933,8 @@ pub fn seed_opening_if_needed(session: &mut TavernSession, pack: &StoryPack) -> 
         engine_tag: None,
         program: None,
         reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
     });
     session.opening_seeded = true;
@@ -3894,6 +3979,8 @@ pub fn enter_side_branch(
         engine_tag: None,
         program: None,
         reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
     });
     session.opening_seeded = true;
@@ -4735,6 +4822,32 @@ impl TavernSessionStore {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: {
+                let mut m = std::collections::HashMap::new();
+                for c in &pack.characters {
+                    if !c.starting_wardrobe.is_empty() {
+                        m.insert(c.id.clone(), c.starting_wardrobe.clone());
+                    }
+                }
+                m
+            },
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
         };
         if let Some(pid) = author_project_id {
             session.author_live_path = Some(format!(
@@ -5199,6 +5312,63 @@ impl TavernSessionStore {
     }
 
     /// Restore a save into the live session (same sessionId). Keeps sessionId; clears active run.
+    /// Fork a save into a NEW session (cross-session branch, Front Porch forkFromMessage parity).
+    /// New session_id, same pack, snapshot restored, parent linked via fork_from_save_id lineage.
+    /// Journal/Growth copySessionTo semantics: receipts >= cursor stay behind — here cursor = snapshot turn's message len.
+    pub fn fork_save_to_session(&self, session_id: &str, save_id: &str, label: Option<String>) -> CoreResult<TavernSession> {
+        let _g = self.lock.lock();
+        let path_save = self.save_path(session_id, save_id)?;
+        if !path_save.exists() {
+            return Err(CoreError::NotFound(format!("save not found: {save_id}")));
+        }
+        let save: TavernSave = serde_json::from_str(&fs::read_to_string(&path_save)?)?;
+        let mut snap = save.snapshot.clone();
+        let new_id = format!("tavern-session-{}", Uuid::new_v4());
+        snap.session_id = new_id.clone();
+        snap.active_run_id = None;
+        snap.checkpoints = vec![];
+        snap.turn_progress = None;
+        // lineage: new worldline forked from this save
+        snap.last_restored_save_id = None;
+        snap.current_worldline_id = Some(format!("wl-{}", Uuid::new_v4()));
+        let now = now_rfc3339();
+        snap.created_at = now.clone();
+        snap.updated_at = now;
+        let flabel = label.filter(|s| !s.trim().is_empty()).unwrap_or_else(|| format!("分叉自「{}」", save.label));
+        snap.messages.push(TavernMessage {
+            id: format!("msg-{}", Uuid::new_v4()),
+            role: "assistant".into(),
+            content: format!("〔分叉〕新分支「{flabel}」（源存档「{}」第{}回合）。旧会话不受影响。", save.label, save.turn),
+            created_at: now_rfc3339(),
+            options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
+            engine_tag: None,
+            program: None,
+            reasoning: None,
+            tokens: 0,
+        });
+        let _ = safe_id(&new_id)?;
+        fs::create_dir_all(self.dir())?;
+        let path = self.path_for(&new_id)?;
+        write_atomic(&path, &serde_json::to_string_pretty(&snap)?)?;
+        // record fork lineage as a save in the NEW session pointing back
+        let fork_save = TavernSave {
+            save_id: format!("save-{}", Uuid::new_v4()),
+            session_id: new_id.clone(),
+            label: format!("分叉点（源 {}/{})", session_id, save_id),
+            turn: snap.turn,
+            created_at: now_rfc3339(),
+            fork_from_save_id: Some(save_id.to_string()),
+            worldline_id: snap.current_worldline_id.clone().unwrap_or_else(|| "main".into()),
+            snapshot: snap.clone(),
+        };
+        let fpath = self.save_path(&new_id, &fork_save.save_id)?;
+        if let Some(parent) = fpath.parent() { let _ = fs::create_dir_all(parent); }
+        let _ = write_atomic(&fpath, &serde_json::to_string_pretty(&fork_save)?);
+        Ok(snap)
+    }
+
     pub fn restore_save(&self, session_id: &str, save_id: &str) -> CoreResult<TavernSession> {
         let _g = self.lock.lock();
         let path_save = self.save_path(session_id, save_id)?;
@@ -5237,6 +5407,8 @@ impl TavernSessionStore {
             engine_tag: None,
             program: None,
             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
         });
         // inline save under same lock
@@ -5448,6 +5620,8 @@ mod tests {
             content: "【开场】雨夜，玩家抵达旧茶馆门前。".into(),
             created_at: "2026-08-26T04:40:00Z".into(),
             options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
             engine_tag: None,
             program: None,
             reasoning: None,
@@ -5468,6 +5642,8 @@ mod tests {
             content: "请直接回复两个字：好的".into(),
             created_at: "2026-08-26T04:45:18Z".into(),
             options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
             engine_tag: None,
             program: None,
             reasoning: None,
@@ -5487,6 +5663,8 @@ mod tests {
             content: "好的".into(),
             created_at: "2026-08-26T04:45:51Z".into(),
             options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
             engine_tag: None,
             program: None,
             reasoning: None,
@@ -5755,6 +5933,24 @@ mod tests {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: Default::default(),
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -5860,6 +6056,8 @@ mod tests {
                 engine_tag: None,
                 program: None,
                 reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
             }
         }
@@ -5972,6 +6170,24 @@ mod focus_tests {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: Default::default(),
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
             world: WorldState::default(),
             game_clock: Default::default(),
         };
@@ -6066,6 +6282,24 @@ mod worldline_tests {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: Default::default(),
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -7483,6 +7717,8 @@ mod turn_submit_guard_tests {
             engine_tag: None,
             program: None,
             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
         }
     }
@@ -7549,6 +7785,24 @@ mod turn_submit_guard_tests {
             chapter_diaries: Vec::new(),
             turn_progress: None,
             diary_config: None,
+            pockets: Default::default(),
+            pockets_enabled: true,
+            needs: Default::default(),
+            growth: Default::default(),
+            world_climate: Default::default(),
+            chaos: Default::default(),
+            milestones: Default::default(),
+            objectives: Default::default(),
+            ambitions: Default::default(),
+            dream: Default::default(),
+            episodes: Default::default(),
+            journal: Default::default(),
+            relationships: Default::default(),
+            pending_swipes: Default::default(),
+            promises: Default::default(),
+            preferences: Default::default(),
+            presence: Default::default(),
+            timed_world_info: Default::default(),
             director_task: None,
             world: WorldState::default(),
             game_clock: Default::default(),

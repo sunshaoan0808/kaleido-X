@@ -534,6 +534,8 @@ mod tests {
             content: text.to_string(),
             created_at: "2026-01-01T00:00:00Z".into(),
             options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
             engine_tag: tag,
             program: None,
             reasoning: None,

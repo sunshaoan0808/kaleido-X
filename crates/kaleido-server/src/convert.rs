@@ -520,6 +520,7 @@ fn card_to_ref(idx: usize, name: &str, importance: &str, card: &Value) -> PackCh
             voice: None,
             archive: None,
         avatar: None,
+        starting_wardrobe: Default::default(),
     }
 }
 

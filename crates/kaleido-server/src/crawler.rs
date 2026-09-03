@@ -2616,6 +2616,7 @@ pub(crate) fn spawn_auto_cast_extraction(state: AppState, pack_id: String) {
             voice: None,
             archive: None,
                         avatar: None,
+                        starting_wardrobe: Default::default(),
                     });
                     existing.insert(name);
                     added += 1;
@@ -2772,6 +2773,7 @@ pub(crate) fn build_pack_from_chapters(
             voice: None,
             archive: None,
             avatar: None,
+            starting_wardrobe: Default::default(),
         },
         PackCharacterRef {
             id: "c-player".into(),
@@ -2799,6 +2801,7 @@ pub(crate) fn build_pack_from_chapters(
             voice: None,
             archive: None,
             avatar: None,
+            starting_wardrobe: Default::default(),
         },
     ];
     for (i, n) in extract_cast_names(chapters).into_iter().enumerate() {
@@ -2828,6 +2831,7 @@ pub(crate) fn build_pack_from_chapters(
             voice: None,
             archive: None,
             avatar: None,
+            starting_wardrobe: Default::default(),
         });
     }
     let present: Vec<String> = chars
@@ -5406,6 +5410,7 @@ mod tests {
                 beliefs: vec![],
                 expressions: std::collections::HashMap::new(),
                 avatar: None,
+                starting_wardrobe: Default::default(),
                 voice: None,
                 archive: None,
             },
@@ -5433,6 +5438,7 @@ mod tests {
                 beliefs: vec![],
                 expressions: std::collections::HashMap::new(),
                 avatar: None,
+                starting_wardrobe: Default::default(),
                 voice: None,
                 archive: None,
             },
@@ -5493,6 +5499,7 @@ mod tests {
                 beliefs: vec![],
                 expressions: std::collections::HashMap::new(),
                 avatar: None,
+                starting_wardrobe: Default::default(),
                 voice: None,
                 archive: None,
             },

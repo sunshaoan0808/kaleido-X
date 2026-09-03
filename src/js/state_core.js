@@ -10,6 +10,8 @@ import { formatDateTime as _fmtDT } from './utils.js';
 import { TOKEN_KEY, USER_KEY, SID_KEY, STORY_SID_KEY } from './utils.js';
 import { showToast as _showToast } from './toast.js';
 import { showConfirm as _showConfirm, showPrompt as _showPrompt } from './dialog.js';
+import { shortId as _shortId } from './utils.js';
+import { tryApi as _tryApi } from './toast.js';
 
 /* ---- migrated from _dom-part.js tail (P1-3 S2.1) — shared element refs & consts ---- */
 const ST_VISIBLE_TURNS = 3; // S8.25: fold older than last N 对话 rounds
@@ -106,6 +108,7 @@ try {
 } catch (_) {}
 
 
+
 /* S2.16: partner-edit facade — real module src/js/partner.js reads/writes the
  * worldbook/character-card/regex editor state lets. */
 try {
@@ -126,6 +129,9 @@ try {
  * worksOpenPath read-only). Canonical lets stay here; real module settings.js
  * accesses via these accessors. */
 try {
+  let appearanceState = {};
+  let appearanceBlobUrl = '';
+
   window.__kaleidoSettingsState = {
     get settings() { return settings; }, set settings(v) { settings = v; },
     get stylePresetsData() { return stylePresetsData; }, set stylePresetsData(v) { stylePresetsData = v; },
@@ -184,3 +190,5 @@ try {
     get streaming() { return storyStreaming; }, set streaming(v) { storyStreaming = v; },
   };
 } catch (_) {}
+
+export { settings, partner, messages, sessionId };

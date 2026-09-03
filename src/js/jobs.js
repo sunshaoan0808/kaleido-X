@@ -16,6 +16,7 @@ import { $ } from './dom.js';
 import { api } from './api.js';
 import { apiBase, friendlyError } from './api_shell.js';
 import { showToast } from './toast.js';
+import { partner } from './state_core.js';
 
 /** closure-state accessors */
 const __authToken = () => window.__kaleidoAuthState.token;
@@ -740,10 +741,10 @@ export function initJobsUI() {
     $('jobs-cancel-all').onclick = async () => {
       try {
         const data = await api('/api/v1/jobs/cancel-all', { method: 'POST', body: {} });
-        toast('已取消 ' + (data.count ?? (data.cancelled || []).length) + ' 个活动任务');
+        showToast('已取消 ' + (data.count ?? (data.cancelled || []).length) + ' 个活动任务');
         await refreshJobs();
       } catch (e) {
-        toast(String(e.message || e), true);
+        showToast(String(e.message || e), true);
       }
     };
   }
@@ -1294,4 +1295,4 @@ export function initJobsUI() {
 }
 
 /* ===== exports consumed by remaining closure parts ===== */
-export { setPanel, refreshJobs };
+export { setPanel, refreshJobs, readSSE };

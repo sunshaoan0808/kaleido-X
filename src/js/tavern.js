@@ -29,7 +29,11 @@ import {
   uid, ADULT_OK_KEY, TAVERN_SID_KEY, ST_READPOS_PREFIX,
   PLAYABLE_LABELS, stripChoicesBlock, resolveMessageOptions,
 } from './utils.js';
-import { ST_VISIBLE_TURNS, setStHistoryExpanded } from './state.js';
+import { ST_VISIBLE_TURNS, setStHistoryExpanded, stHistoryExpanded } from './state.js';
+import { ST_ICONS } from './utils.js';
+import { switchAzView } from './tabs_bridge.js';
+import { readSSE } from './jobs.js';
+import { sessionId } from './state_core.js';
 import mammoth from 'mammoth/mammoth.browser.js';
 
 /** closure-state accessors (canonical lets remain inside the virtual-module IIFE) */
@@ -59,8 +63,8 @@ function esc(s) {
 /* ===================== canonical tavern state (moved from _state-part.js) ===================== */
 let tavernPacks = [];
 let tavernSessions = [];
-let tavernSession = null;
-let tavernPack = null;
+export let tavernSession = null;
+export let tavernPack = null;
 let tavernStreaming = false;
 // S8.31: 用户手动滚动过消息区（用于流式期间保持视口在开头，尊重用户滚动）
 let stTavernUserScrolled = false;
@@ -471,7 +475,7 @@ function stStageEditForm(sd, sid) {
   const fRow = function (label, inner) {
     return '<div class="st-f-row"><label>' + label + '</label>' + inner + '</div>';
   };
-  return '<form class="st-stage-form" data-sid="' + encodeURIComponent(sid) + '">' +
+  return '<form class="st-stage-form" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">' +
     fRow('主线强度', '<select data-dc="mainlineStrength">' + stStageOpts(DC_MAINLINE_OPTS, v(sd, 'mainlineStrength', 'balanced')) + '</select>') +
     fRow('运行模式', '<select data-dc="mode">' + stStageOpts(DC_MODE_OPTS, v(rp, 'mode', 'on_demand')) + '</select>') +
     fRow('回合间隔', '<input type="number" min="0" step="1" data-dc="intervalTurns" value="' + escapeHtml(String(v(rp, 'intervalTurns', 0))) + '">') +
@@ -759,7 +763,248 @@ async function stStageRender() {
   } catch (e) {
     out += stStageSec('🎭 角色状态', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>');
   }
+  // [吞噬 Front Porch AI pockets.dart] 口袋与衣物（per-character 只读展示，P1-B À la carte 独立开关）
+  try {
+    const sid = tavernSession.sessionId;
+    const pk = await stStageFetch('/pockets');
+    const pockets = pk.pockets || pk || {};
+    const pids = Object.keys(pockets);
+    // pocketsEnabled 单独开关（默认开，Own switch. Does not need the Realism Engine.）
+    let pocketsEnabled = true;
+    try { const pe = await stStageFetch('/pockets-enabled'); pocketsEnabled = pe.pocketsEnabled !== false; } catch (_) {}
+    let ph = '<div class="st-stage-acts"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="st-pockets-enabled" ' + (pocketsEnabled ? 'checked' : '') + ' /> 口袋与衣物（独立开关，提示词注入）</label><span style="margin-left:8px;font-size:11px;color:var(--text-dim,#8b93a7)">关时仅隐藏提示词注入，数据保留</span></div>';
+    if (!pids.length) {
+      ph += '<div class="st-stage-empty">暂无口袋记录 —— 角色获得/穿戴物品后此处展示</div>';
+    } else {
+      pids.forEach(function (cid) {
+        const p = pockets[cid] || {};
+        const worn = (p.worn || []).map(function (it) { return (it && it.name) ? (it.name + (it.state ? '（' + it.state + '）' : '')) : String(it); }).join('、');
+        const carrying = (p.carrying || []).map(function (it) { return (it && it.name) ? (it.name + (it.state ? '（' + it.state + '）' : '')) : String(it); }).join('、');
+        const setAside = (p.setAside || p.set_aside || []).map(function (e) { const it = e.item || e; return (it && it.name) ? (it.name + (it.state ? '（' + it.state + '）' : '') + (e.clothing ? ' [衣物]' : '')) : String(e); }).join('、');
+        ph += '<div class="st-stage-row"><b>' + stStageVal(cid) + '</b></div>';
+        if (worn) ph += '<div class="st-stage-ev">👗 身穿：' + stStageVal(worn) + '</div>';
+        if (carrying) ph += '<div class="st-stage-ev">🎒 携带：' + stStageVal(carrying) + '</div>';
+        if (setAside) ph += '<div class="st-stage-ev" style="color:var(--text-dim,#8b93a7)">🪑 暂存：' + stStageVal(setAside) + '（衣物次日清晨过期）</div>';
+        if (!worn && !carrying && !setAside) ph += '<div class="st-stage-ev" style="color:var(--text-dim,#8b93a7)">（空）</div>';
+      });
+    }
+    if (!pocketsEnabled) ph += '<div class="st-stage-ev" style="color:var(--text-dim,#8b93a7)">（口袋提示词注入已关闭，LLM 不会看到随身物品；数据仍保留）</div>';
+    out += stStageSec('🎒 口袋与衣物' + (pocketsEnabled ? '' : ' · 已关闭'), pids.length ? pids.length + ' 人' : '0 人', ph);
+  } catch (e) {
+    out += stStageSec('🎭 角色状态', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>');
+  }
+  // [P2-A 吞噬 Front Porch AI needs_simulation.rs] Needs 六维只读+标注（0-100，urgent≤35/critical≤20）
+  try {
+    const nk = await stStageFetch('/needs');
+    const needsMap = nk.needs || nk || {};
+    const nids = Object.keys(needsMap);
+    let nh = '';
+    if (!nids.length) nh = '<div class="st-stage-empty">暂无 Needs 记录 —— 需求随回合自衰减</div>';
+    else nids.forEach(function (cid) {
+      const n = needsMap[cid] || {};
+      const vec = n.vector || n || {};
+      const pend = n.pendingCatastrophe || n.pending_catastrophe || '';
+      const chips = ['hunger','energy','social','fun','hygiene','comfort'].map(function (k) {
+        const v = vec[k]; if (v == null) return '';
+        const cls = v <= 20 ? 'color:#ff6b6b' : v <= 35 ? 'color:#ffb86b' : '';
+        return '<span class="st-stage-chip" style="' + cls + '">' + k + '=' + v + '</span>';
+      }).filter(Boolean).join('');
+      nh += '<div class="st-stage-row"><b>' + stStageVal(cid) + '</b> ' + chips + '</div>';
+      if (pend) nh += '<div class="st-stage-ev" style="color:#ff6b6b">⚠️ ' + stStageVal(pend) + '</div>';
+    });
+    out += stStageSec('🧠 Needs 六维', nids.length ? nids.length + ' 人' : '0 人', nh + '<div class="st-stage-acts"><button type="button" data-stage-act="needs-tick" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">⏳ 推进一回合衰减</button></div>');
+  } catch (e) { out += stStageSec('🧠 Needs 六维', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>'); }
+  // [P2-B/P3-A 吞噬 Front Porch AI growth-rings + world] Growth / Climate
+  try {
+    const [gk, wc] = await Promise.all([stStageFetch('/growth').catch(function () { return { growth: { rings: [] } }; }), stStageFetch('/world-climate').catch(function () { return { worldClimate: {} }; })]);
+    const rings = (gk.growth && gk.growth.rings) ? gk.growth.rings : (Array.isArray(gk.rings) ? gk.rings : []);
+    const climate = wc.worldClimate || wc.world_climate || wc || {};
+    const atmo = climate.atmosphere || 'breathable';
+    const grav = climate.gravity || 'earth';
+    const tb = climate.temp_band || climate.tempBand || 'auto';
+    let gh = '';
+    if (!rings.length) gh = '<div class="st-stage-empty">暂无年轮 —— 事件触发后自动登记</div>';
+    else rings.forEach(function (r) {
+      gh += '<div class="st-stage-row"><b>' + stStageVal(r.character || r.characterId || '') + '</b><span>' + stStageVal(r.triggerEvent || r.trigger_event || r.event || '') + '</span><span class="st-stage-chip">' + (function(s){s=Number(s||0);return s>=0.8?'established':s>=0.35?'developing':'fragile';})(r.strength) + ' ' + stStageVal((r.strength != null ? Number(r.strength).toFixed(2) : '')) + '</span>' + (r.faded ? '<span class="st-stage-chip">faded</span>' : '') + '</div>';
+    });
+    out += stStageSec('🌱 成长年轮', rings.length + ' 枚', gh);
+    out += stStageSec('🌍 世界气候', atmo + ' · ' + grav + ' · ' + tb, '<div class="st-stage-row"><b>atmosphere</b><span>' + stStageVal(atmo) + '</span><b>gravity</b><span>' + stStageVal(grav) + '</span><b>temp_band</b><span>' + stStageVal(tb) + '</span></div><div class="st-stage-acts"><button type="button" data-stage-act="climate-edit" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">✏️ 编辑气候</button></div>');
+  } catch (e) { out += stStageSec('🌱 成长年轮 / 🌍 世界气候', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>'); }
+  // [P4 吞噬 Front Porch AI chaos / milestones / objectives / dreams]
+  try {
+    const [ch, ms, objs, dreamRes, eps] = await Promise.all([
+      stStageFetch('/chaos').catch(function () { return { chaos: {} }; }),
+      stStageFetch('/milestones').catch(function () { return { milestones: [] }; }),
+      stStageFetch('/objectives').catch(function () { return { objectives: [] }; }),
+      stStageFetch('/dreams').catch(function () { return { dream: {}, episodes: { crumbs: [] } }; }),
+      stStageFetch('/episodes').catch(function () { return { episodes: { crumbs: [] } }; }),
+    ]);
+    const chaos = ch.chaos || ch || {};
+    const miles = ms.milestones || ms || [];
+    const objectives = objs.objectives || objs || [];
+    const dream = (dreamRes.dream || dreamRes || {});
+    const dreamText = dream.last_dream || dream.lastDream || dream.lastDreamText || '';
+    const episodes = (eps.episodes && eps.episodes.crumbs) ? eps.episodes.crumbs : (dreamRes.episodes && dreamRes.episodes.crumbs) ? dreamRes.episodes.crumbs : [];
+    let chh = '<div class="st-stage-row"><b>pressure</b><span>' + stStageVal(chaos.pressure != null ? chaos.pressure : 0) + '/100</span><span>' + (chaos.enabled ? 'enabled' : 'off') + '</span>' + (chaos.pendingInjection || chaos.pending_injection ? '<span class="st-stage-chip">pending</span>' : '') + '</div>';
+    if (chaos.pendingInjection || chaos.pending_injection) chh += '<div class="st-stage-ev">' + stStageVal(chaos.pendingInjection || chaos.pending_injection) + '</div>';
+    chh += '<div class="st-stage-acts"><button type="button" data-stage-act="chaos-toggle" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">' + (chaos.enabled ? '关闭 Chaos' : '开启 Chaos') + '</button><button type="button" data-stage-act="chaos-tick" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">🎲 推进压力</button></div>';
+    out += stStageSec('🎲 Chaos / Chance Time', chaos.enabled ? 'pressure ' + (chaos.pressure||0) : 'off', chh);
+    let msh = '';
+    if (!miles.length) msh = '<div class="st-stage-empty">暂无里程碑</div>';
+    else miles.forEach(function (m) { msh += '<div class="st-stage-row"><b>' + stStageVal(m.character) + '</b><span>' + stStageVal(m.label || m.kind) + '</span><span class="st-stage-chip">' + stStageVal(m.kind) + ' tier ' + stStageVal(m.tier) + '</span></div>'; });
+    out += stStageSec('🏅 里程碑', miles.length + ' 个', msh);
+    let obh = '';
+    if (!objectives.length) obh = '<div class="st-stage-empty">暂无目标 —— POST /objectives 创建</div>';
+    else objectives.forEach(function (o) {
+      const done = (o.tasks||[]).filter(function(x){return x.completed;}).length;
+      const total = (o.tasks||[]).length || 1;
+      const pct = Math.round(done/total*100);
+      const stage = pct>=100?'achieved':pct>=75?'nearly there':pct>=50?'halfway there':pct>=25?'gaining ground':'just beginning';
+      obh += '<div class="st-stage-row"><b>' + stStageVal(o.title) + '</b><span>' + stStageVal(o.status) + ' · ' + stStageVal(o.owner) + '</span><span class="st-stage-chip">' + stage + '</span></div>';
+      (o.tasks||[]).forEach(function (t) { obh += '<div class="st-stage-ev">' + (t.completed ? '✅' : '⬜') + ' ' + stStageVal(t.title) + '</div>'; });
+    });
+    obh += '<div class="st-stage-acts"><button type="button" data-stage-act="obj-new" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">＋ 新目标</button></div>';
+    out += stStageSec('🎯 目标', objectives.length + ' 个', obh);
+    const ambs = dream.ambitions || [];
+    let drh = '';
+    if (dreamText) drh += '<div class="st-stage-ev">💤 昨夜之梦：' + stStageVal(dreamText) + '</div>';
+    if (!episodes.length && !dreamText && !ambs.length) drh = '<div class="st-stage-empty">暂无夜梦/碎屑 —— 跨夜后生成梦境，episode 记录日常</div>';
+    else {
+      episodes.slice(-3).forEach(function (e) { drh += '<div class="st-stage-ev">[' + stStageVal(e.kind) + '] ' + stStageVal(e.content) + '</div>'; });
+      ambs.forEach(function (a) {
+        const linked = objectives.filter(function(o){return o.owner===a.character && o.status!=='abandoned';});
+        const pct = linked.length ? Math.round(linked.reduce(function(s,o){const d=(o.tasks||[]).filter(function(x){return x.completed;}).length;const tt=(o.tasks||[]).length||1;return s+d/tt*100;},0)/linked.length) : 0;
+        const stage = pct>=100?'achieved':pct>=75?'nearly there':pct>=50?'halfway there':pct>=25?'gaining ground':'just beginning';
+        drh += '<div class="st-stage-ev">野心：' + stStageVal(a.character) + ' — ' + stStageVal(a.text) + ' <span class="st-stage-chip">' + stage + '</span></div>';
+      });
+    }
+    drh += '<div class="st-stage-acts"><button type="button" data-stage-act="episode-add" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">＋ 记录碎屑</button></div>';
+    out += stStageSec('💤 夜梦 / 日常碎屑', (episodes.length||0) + ' 碎屑', drh);
+    // Journal 卡片
+    try {
+      const jr = await stStageFetch('/journals').catch(function(){return {journals:[]};});
+      let jcards = jr.journals || jr.journal_cards || jr.cards || [];
+      if (!Array.isArray(jcards)) jcards = [];
+      let jh = '';
+      if (!jcards.length) jh = '<div class="st-stage-empty">暂无 Journal 卡片 —— POST /journals 新建（热卡常驻，冷卡召回）</div>';
+      else jcards.slice(-10).forEach(function(c){
+        jh += '<div class="st-stage-row"><b>' + stStageVal(c.content ? c.content.slice(0,24) : c.id) + '</b><span class="st-stage-chip">heat ' + stStageVal(c.heat != null ? Number(c.heat).toFixed(2) : '') + '</span>' + (c.pinned ? '<span class="st-stage-chip">📌 pinned</span>' : '') + (c.emotion_label ? '<span class="st-stage-chip">' + stStageVal(c.emotion_label) + '</span>' : '') + '<button type="button" class="sm" data-jpin="' + stStageVal(c.id||'') + '">' + (c.pinned?'unpin':'pin') + '</button><button type="button" class="ghost sm" data-jdel="' + stStageVal(c.id||'') + '">删</button></div>';
+        if (c.content) jh += '<div class="st-stage-ev">' + stStageVal(c.content) + '</div>';
+      });
+      jh += '<div class="st-stage-acts"><button type="button" data-stage-act="journal-new" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">＋ 新建 Journal</button></div>';
+      out += stStageSec('📓 Journal 卡片', jcards.length + ' 张', jh);
+    } catch(e){ out += '<div class="st-stage-err">Journal 读取失败：' + (e.message||e) + '</div>'; }
+    // 羁绊活数值
+    try {
+      const rr = await stStageFetch('/relationships').catch(function(){return {relationships:{}};});
+      const rels = rr.relationships || rr || {};
+      const rids = Object.keys(rels);
+      let rh = '';
+      if (!rids.length) rh = '<div class="st-stage-empty">暂无羁绊 —— PUT /relationships 写入 bond/trust</div>';
+      else rids.forEach(function(cid){
+        const b = rels[cid]||{};
+        rh += '<div class="st-stage-row"><b>' + stStageVal(cid) + '</b><span>bond ' + stStageVal(b.score!=null?b.score:0) + '</span><span>trust ' + stStageVal(b.trust!=null?b.trust:0) + '</span>' + (b.fixation?'<span class="st-stage-chip">'+stStageVal(b.fixation)+'</span>':'') + (b.spatial_stance?'<span class="st-stage-chip">'+stStageVal(b.spatial_stance)+'</span>':'') + '</div>';
+      });
+      rh += '<div class="st-stage-acts"><button type="button" data-stage-act="rel-tick" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">⏳ 羁绊衰减</button></div>';
+      out += stStageSec('💞 羁绊', rids.length + ' 人', rh);
+    } catch(e){ out += '<div class="st-stage-err">羁绊读取失败：' + (e.message||e) + '</div>'; }
+    // Our Story 时间线聚合
+    try {
+      const sl = await stStageFetch('/storyline').catch(function(){return {storyline:[]};});
+      const items = sl.storyline || sl.items || [];
+      let sh = '';
+      if (!items.length) sh = '<div class="st-stage-empty">暂无时间线 —— 里程碑/Journal/年轮/目标完成后聚合</div>';
+      else items.slice(-20).forEach(function(it){
+        sh += '<div class="st-stage-row"><span class="st-stage-chip">' + stStageVal(it.kind||'') + '</span><span>' + stStageVal(it.text||'') + '</span><span class="st-stage-chip">turn ' + stStageVal(it.turn!=null?it.turn:'') + '</span>' + (it.receipts && it.receipts.length ? '<span class="st-stage-chip">🧾' + it.receipts.length + '</span>' : '') + '</div>';
+      });
+      out += stStageSec('📜 Our Story', items.length + ' 条', sh);
+    } catch(e){ out += '<div class="st-stage-err">时间线读取失败：' + (e.message||e) + '</div>'; }
+    // 心情/在场
+    try {
+      const [moodRes, presRes] = await Promise.all([
+        stStageFetch('/mood').catch(function(){return {mood:{}};}),
+        stStageFetch('/presence').catch(function(){return {presence:{}};}),
+      ]);
+      const mood = moodRes.mood || {};
+      const pres = presRes.presence || {};
+      const pids2 = Object.keys(pres);
+      let mh = '';
+      if (mood.summary) mh += '<div class="st-stage-ev">😶 ' + stStageVal(mood.summary) + '</div>';
+      else mh += '<div class="st-stage-empty">心情平稳 —— needs/时间/天气无显著倾斜</div>';
+      if (pids2.length) pids2.forEach(function(cid){
+        const pr = pres[cid]||{};
+        mh += '<div class="st-stage-row"><b>' + stStageVal(cid) + '</b><span>' + stStageVal(pr.occupation||'') + ' ' + stStageVal(pr.hours||'') + '</span></div>';
+      });
+      mh += '<div class="st-stage-acts"><button type="button" data-stage-act="presence-edit" data-sid="' + encodeURIComponent((tavernSession && tavernSession.sessionId) || '') + '">✏️ 在场设置</button></div>';
+      out += stStageSec('😶 心情 / 🏢 在场', (mood.offset||0) + ' · ' + pids2.length + ' 人', mh);
+    } catch(e){ out += '<div class="st-stage-err">心情读取失败：' + (e.message||e) + '</div>'; }
+    // 世界书定时 sticky/cooldown pill
+    try {
+      const tw = await stStageFetch('/timed-world-info').catch(function(){return {sticky:[],cooldown:[]};});
+      const st2 = tw.sticky || [];
+      const cd2 = tw.cooldown || [];
+      let th = '';
+      if (!st2.length && !cd2.length) th = '<div class="st-stage-empty">无长效世界书 —— sticky/cooldown 条目触发后常驻多条</div>';
+      else {
+        st2.forEach(function(e){ th += '<div class="st-stage-row"><span class="st-stage-chip">sticky 剩' + stStageVal(e.remaining) + '条</span><span>' + stStageVal(e.key||'') + '</span></div>'; });
+        cd2.forEach(function(e){ th += '<div class="st-stage-row"><span class="st-stage-chip">cooldown 剩' + stStageVal(e.remaining) + '条</span><span>' + stStageVal(e.key||'') + '</span></div>'; });
+      }
+      out += stStageSec('📖 世界书定时', st2.length + ' 长效', th);
+    } catch(e){ out += '<div class="st-stage-err">定时读取失败：' + (e.message||e) + '</div>'; }
+    // 承诺债务
+    try {
+      const pr = await stStageFetch('/promises').catch(function(){return {promises:[]};});
+      const plist = pr.promises || pr || [];
+      const arr = Array.isArray(plist) ? plist : [];
+      const open = arr.filter(function(p){ return (p.status||'open')==='open'; });
+      let ph2 = '';
+      if (!open.length) ph2 = '<div class="st-stage-empty">暂无未竟承诺</div>';
+      else open.slice(-5).forEach(function(p){
+        ph2 += '<div class="st-stage-row"><b>' + stStageVal(p.character||'') + '</b><span>' + stStageVal(p.text||'') + '</span><span class="st-stage-chip">' + stStageVal(p.party||'') + '</span></div>';
+      });
+      ph2 += '<div class="st-stage-acts"><button type="button" data-stage-act="promise-new" data-sid="' + encodeURIComponent((stCurrentSession() || {}).sid || '') + '">＋ 新承诺</button></div>';
+      out += stStageSec('🤝 承诺', open.length + ' 未竟', ph2);
+    } catch(e){ out += '<div class="st-stage-err">承诺读取失败：' + (e.message||e) + '</div>'; }
+  } catch (e) { out += stStageSec('🎲 / 🏅 / 🎯 / 💤 P4', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>'); }
   body.innerHTML = out;
+  // pockets_enabled toggle (must wire after innerHTML — element lives inside out)
+  (function () {
+    const cb = document.getElementById('st-pockets-enabled');
+    if (!cb) return;
+    cb.onchange = async function () {
+      const v = cb.checked;
+      cb.disabled = true;
+      try {
+        await stApi('/sessions/' + encodeURIComponent(tavernSession.sessionId) + '/pockets-enabled', { method: 'PUT', body: JSON.stringify({ pocketsEnabled: v }) });
+        stStatus(v ? '口袋提示词注入已开启' : '口袋提示词注入已关闭（数据保留）');
+        await stStageRender();
+      } catch (e) { stStatus('切换失败：' + (e.message || e)); cb.checked = !v; } finally { cb.disabled = false; }
+    };
+  })();
+  body.querySelectorAll('[data-jpin]').forEach(function (btn) {
+    btn.onclick = async function () {
+      const cid2 = btn.getAttribute('data-jpin');
+      const sid2 = (tavernSession && tavernSession.sessionId) || '';
+      if (!cid2 || !sid2) return;
+      try {
+        const cur = btn.textContent.trim() === 'pin';
+        await stApi('/sessions/' + encodeURIComponent(sid2) + '/journals/' + encodeURIComponent(cid2) + '/pin', { method: 'POST', body: JSON.stringify({ pinned: cur }) });
+        await stStageRender();
+      } catch (e) { stStatus('pin失败：' + (e.message || e)); }
+    };
+  });
+  body.querySelectorAll('[data-jdel]').forEach(function (btn) {
+    btn.onclick = async function () {
+      const cid2 = btn.getAttribute('data-jdel');
+      const sid2 = (tavernSession && tavernSession.sessionId) || '';
+      if (!cid2 || !sid2) return;
+      if (!confirm('删除该 Journal 卡？')) return;
+      try {
+        await stApi('/sessions/' + encodeURIComponent(sid2) + '/journals/' + encodeURIComponent(cid2), { method: 'DELETE' });
+        await stStageRender();
+      } catch (e) { stStatus('删除失败：' + (e.message || e)); }
+    };
+  });
   body.querySelectorAll('[data-stage-act]').forEach(function (btn) {
     btn.onclick = function () {
       const act = btn.getAttribute('data-stage-act');
@@ -839,7 +1084,7 @@ async function stStageRender() {
         }
         saveBtn.disabled = true; saveBtn.textContent = '保存中…';
         try {
-          await stApi('/sessions/' + sid + '/actor-states', {
+          await stApi('/sessions/' + ((stCurrentSession() || {}).sid || '') + '/actor-states', {
             method: 'PUT',
             body: JSON.stringify({ characterId: cid, fields: newFields })
           });
@@ -878,6 +1123,59 @@ async function stStageAct(act, sid) {
   const btn = body && body.querySelector('[data-stage-act="' + act + '"]');
   if (btn) { btn.disabled = true; btn.textContent = '处理中…'; }
   try {
+    if (act === 'chaos-toggle') {
+      const cur = await stStageFetch('/chaos').catch(function(){return {chaos:{enabled:false}};});
+      const en = !(cur.chaos && cur.chaos.enabled);
+      await stApi('/sessions/' + sid + '/chaos', { method: 'PUT', body: JSON.stringify({ enabled: en }) });
+      stStatus(en?'Chaos 已开启':'Chaos 已关闭'); await stStageRender(); return;
+    }
+    if (act === 'chaos-tick') { await stApi('/sessions/' + sid + '/chaos/tick', { method: 'POST', body: '{}' }); stStatus('Chaos 压力已推进'); await stStageRender(); return; }
+    if (act === 'obj-new') {
+      const title = prompt('目标标题:', ''); if (!title) return;
+      const tasks = (prompt('任务逗号分隔，可留空:', '')||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      await stApi('/sessions/' + sid + '/objectives', { method: 'POST', body: JSON.stringify({ title: title.trim(), tasks: tasks, owner: '' }) });
+      stStatus('目标已创建'); await stStageRender(); return;
+    }
+    if (act === 'episode-add') {
+      const content = prompt('碎屑内容:', ''); if (!content) return;
+      const kind = prompt('kind (work/social/wander):', 'work') || 'work';
+      await stApi('/sessions/' + sid + '/episodes', { method: 'POST', body: JSON.stringify({ kind: kind.trim(), content: content.trim() }) });
+      stStatus('碎屑已记录'); await stStageRender(); return;
+    }
+    if (act === 'journal-new') {
+      const content = prompt('Journal 内容:', ''); if (!content) return;
+      const cid = prompt('characterId (留空取首角色):', '') || '';
+      const characterId = cid.trim() || (tavernSession && tavernSession.present_character_ids && tavernSession.present_character_ids[0]) || 'c1';
+      await stApi('/sessions/' + sid + '/journals', { method: 'POST', body: JSON.stringify({ characterId: characterId, content: content.trim(), category: 'memory' }) });
+      stStatus('Journal 已创建'); await stStageRender(); return;
+    }
+    if (act === 'rel-tick') { await stApi('/sessions/' + sid + '/relationships/tick', { method: 'POST', body: '{}' }); stStatus('羁绊已推进衰减'); await stStageRender(); return; }
+    if (act === 'promise-new') {
+      const text = prompt('承诺内容:', ''); if (!text) return;
+      const character = prompt('characterId (留空=旁白):', '') || '';
+      await stApi('/sessions/' + sid + '/promises', { method: 'POST', body: JSON.stringify({ character: character.trim(), text: text.trim(), party: 'char' }) });
+      stStatus('承诺已记录'); await stStageRender(); return;
+    }
+    if (act === 'presence-edit') {
+      const cid = prompt('characterId:', '') || ''; if (!cid.trim()) return;
+      const occ = prompt('occupation (职业，留空清空):', '') || '';
+      const hours = prompt('hours 如 9am-5pm (留空清空):', '') || '';
+      await stApi('/sessions/' + sid + '/presence', { method: 'PUT', body: JSON.stringify({ characterId: cid.trim(), occupation: occ.trim(), hours: hours.trim() }) });
+      stStatus('在场已更新'); await stStageRender(); return;
+    }
+    if (act === 'needs-tick') {
+      await stApi('/sessions/' + sid + '/needs/tick', { method: 'POST', body: '{}' });
+      stStatus('Needs 已推进一回合衰减');
+      await stStageRender(); return;
+    }
+    if (act === 'climate-edit') {
+      const atmo = prompt('atmosphere (breathable/thin/unbreathable/hostile):', 'breathable');
+      if (atmo == null) return;
+      const grav = prompt('gravity (earth/low/high/micro):', 'earth');
+      const tb = prompt('temp_band (auto/cold/temperate/hot) 留空=auto:', '');
+      await stApi('/sessions/' + sid + '/world-climate', { method: 'PUT', body: JSON.stringify({ atmosphere: atmo.trim() || 'breathable', gravity: (grav||'earth').trim()||'earth', temp_band: (tb||'').trim()||null }) });
+      stStatus('世界气候已更新'); await stStageRender(); return;
+    }
     if (act === 'director') {
       await stApi('/sessions/' + sid + '/director-plan/run', { method: 'POST', body: '{}' });
       stStatus('导演计划已排程，将在下一回合生成');
@@ -3594,7 +3892,7 @@ let shelfNovels = [];
 
 let shelfActiveSlug = null;
 
-async function stSwipe(divEl, dir) {
+export async function stSwipe(divEl, dir) {
   if (!divEl || !tavernSession) return;
   const mid = divEl.getAttribute('data-mid');
   if (!mid) return;
@@ -3604,6 +3902,10 @@ async function stSwipe(divEl, dir) {
   const m = msgs[idx];
   if (!m._swipes) m._swipes = [String(m.content || '')];
   if (typeof m._swipeIdx !== 'number') m._swipeIdx = 0;
+  // [Swipe 后端持久化] 首次加载时把后端 swipes 映射到 _swipes
+  if (m.swipes && m.swipes.length && m._swipes.length <= 1) {
+    m.swipes.forEach(function(s){ if (m._swipes.indexOf(s) < 0) m._swipes.push(s); });
+  }
   const n = m._swipes.length;
   // 右箭头且已是最后一条 → 请求新备选（reroll 变体）
   if (dir > 0 && m._swipeIdx >= n - 1) {
@@ -3639,6 +3941,7 @@ async function stSwipe(divEl, dir) {
     if (ni < 0) ni = 0;
     if (ni >= n) return;
     m._swipeIdx = ni;
+    try { stApi('/sessions/' + encodeURIComponent(tavernSession.sessionId) + '/messages/' + encodeURIComponent(mid) + '/swipe', { method: 'PUT', body: JSON.stringify({ index: ni }) }).catch(function(){}); } catch (e) {}
   }
   // 切正文（只换 body 文本，保留角色/角标/程序卡）
   const bodyEl = divEl.querySelector('.bubble-body');
@@ -5082,10 +5385,14 @@ async function stLoadSaves() {
         const btnR = document.createElement('button');
         btnR.type = 'button'; btnR.className = 'sm'; btnR.textContent = '回档';
         btnR.onclick = (ev) => { ev.stopPropagation(); stRestoreSave(s.saveId); };
+        const btnF = document.createElement('button');
+        btnF.type = 'button'; btnF.className = 'sm'; btnF.textContent = '分叉新会话';
+        btnF.title = '从该存档开新分支（旧会话不动）';
+        btnF.onclick = (ev) => { ev.stopPropagation(); stForkSave(s.saveId); };
         const btnD = document.createElement('button');
         btnD.type = 'button'; btnD.className = 'ghost sm'; btnD.textContent = '删';
         btnD.onclick = (ev) => { ev.stopPropagation(); stDeleteSave(s.saveId); };
-        actions.appendChild(btnR); actions.appendChild(btnD);
+        actions.appendChild(btnR); actions.appendChild(btnF); actions.appendChild(btnD);
         list.appendChild(el);
       }
     }
@@ -5124,6 +5431,23 @@ async function stRestoreSave(saveId) {
     await stLoadSaves();
     stStatus(`${tavernSession.title || '故事馆'} · 已回档 · ${stTurnLabel(tavernSession.turn || 0)} · ${tavernSession.nodeId || ''}`);
   } catch (e) { stStatus('回档失败：' + e.message); }
+}
+
+async function stForkSave(saveId) {
+  if (!tavernSession || !saveId) return;
+  const label = await showPrompt('新分支名称（可空）', { value: '' }) || '';
+  try {
+    const r = await stApi('/sessions/' + encodeURIComponent(tavernSession.sessionId) + '/saves/' + encodeURIComponent(saveId) + '/fork', {
+      method: 'POST', body: JSON.stringify({ label: label.trim() || undefined })
+    });
+    const ns = r && r.session;
+    await stLoadSessions();
+    await stLoadSaves();
+    if (ns && ns.sessionId) {
+      showToast('已分叉到新会话', 'success');
+      stStatus('新分支会话 ' + ns.sessionId + ' · ' + stTurnLabel(ns.turn || 0));
+    } else showToast('已分叉', 'success');
+  } catch (e) { stStatus('分叉失败：' + e.message); }
 }
 
 async function stDeleteSave(saveId) {

@@ -108,6 +108,110 @@ fn classify(changes: &[ArcChange]) -> String {
     }
 }
 
+use std::collections::HashMap;
+
+// ── Growth Rings — Front Porch AI growth-rings.md reimplemented ────────────
+// A ring is a small, receipt-backed personality layer on top of the original card.
+// Strong rings barely cool (flashbulb), weak rings fade in a few passes.
+
+/// One growth ring on a character (per-session, per-character).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GrowthRing {
+    pub id: String,
+    pub character: String,
+    pub trigger_event: String,
+    pub strength: f32, // 0.0-1.0, flashbulb resistance
+    #[serde(default)]
+    pub faded: bool,
+    pub created_at_turn: u32,
+}
+
+impl GrowthRing {
+    pub fn new(character: impl Into<String>, trigger_event: impl Into<String>, strength: f32, turn: u32) -> Self {
+        Self { id: uuid::Uuid::new_v4().to_string(), character: character.into(), trigger_event: trigger_event.into(), strength: strength.clamp(0.0, 1.0), faded: false, created_at_turn: turn }
+    }
+    /// Flashbulb-style cooled strength after n passes.
+    pub fn cooled_strength(&self, passes: u32) -> f32 {
+        if self.faded { return 0.0; }
+        let factor = if self.strength >= 0.7 { 0.15 } else if self.strength >= 0.4 { 0.5 } else { 1.0 };
+        (self.strength - crate::journal_physics::K_BASE_DECAY_PER_PASS as f32 * factor * passes as f32).max(0.0)
+    }
+    pub fn is_active(&self) -> bool { !self.faded && self.strength > 0.05 }
+}
+
+/// Per-character ring store (session-scoped).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GrowthStore {
+    #[serde(default)]
+    pub rings: Vec<GrowthRing>,
+}
+
+impl GrowthStore {
+    pub fn active_for(&self, character: &str) -> Vec<&GrowthRing> {
+        self.rings.iter().filter(|r| r.character == character && r.is_active()).collect()
+    }
+    pub fn active_for_all(&self) -> std::collections::HashMap<String, Vec<&GrowthRing>> {
+        let mut m: std::collections::HashMap<String, Vec<&GrowthRing>> = std::collections::HashMap::new();
+        for r in &self.rings { if r.is_active() { m.entry(r.character.clone()).or_default().push(r); } }
+        m
+    }
+    /// GrowthPhysics thresholds: developing 0.35 / established 0.8.
+    pub fn tier_of(strength: f32) -> &'static str {
+        if strength >= 0.8 { "established" } else if strength >= 0.35 { "developing" } else { "fragile" }
+    }
+    /// Injection selection: top 8 by strength, reserve 2 fresh slots for strength<0.35.
+    /// Returns (injected, reserved_fresh_count).
+    pub fn injection_selection(&self, character: &str) -> Vec<&GrowthRing> {
+        let mut act = self.active_for(character);
+        act.sort_by(|a,b| b.strength.partial_cmp(&a.strength).unwrap_or(std::cmp::Ordering::Equal));
+        const MAX_ACTIVE: usize = 12;
+        const INJECTED: usize = 8;
+        const FRESH_SLOTS: usize = 2;
+        let act: Vec<&GrowthRing> = act.into_iter().take(MAX_ACTIVE).collect();
+        let fresh: Vec<&GrowthRing> = act.iter().filter(|r| r.strength < 0.35).take(FRESH_SLOTS).cloned().collect();
+        let mut out: Vec<&GrowthRing> = act.iter().take(INJECTED).cloned().collect();
+        for f in fresh { if !out.iter().any(|r| r.id==f.id) { out.push(f); } }
+        out.truncate(INJECTED + FRESH_SLOTS);
+        out
+    }
+    pub fn strengthen(&mut self, character: &str, event: &str, delta: f32, turn: u32) {
+        if let Some(r) = self.rings.iter_mut().find(|r| r.character == character && r.trigger_event == event && !r.faded) {
+            r.strength = (r.strength + delta).clamp(0.0, 1.0);
+        } else {
+            self.rings.push(GrowthRing::new(character, event, delta.clamp(0.2, 1.0), turn));
+        }
+    }
+    pub fn fade_old(&mut self, turn: u32, max_age_turns: u32) {
+        for r in &mut self.rings { if turn.saturating_sub(r.created_at_turn) > max_age_turns { r.faded = true; } }
+    }
+    pub fn injection_block(&self, character: &str) -> String {
+        let sel = self.injection_selection(character);
+        if sel.is_empty() { return String::new(); }
+        let mut lines = vec![format!("Character Growth for {character}:")];
+        for r in sel { lines.push(format!("- {} ({}, {:.2})", r.trigger_event, Self::tier_of(r.strength), r.strength)); }
+        lines.join("\n")
+    }
+    pub fn by_character(&self) -> HashMap<String, Vec<&GrowthRing>> {
+        let mut m: HashMap<String, Vec<&GrowthRing>> = HashMap::new();
+        for r in &self.rings { m.entry(r.character.clone()).or_default().push(r); }
+        m
+    }
+}
+
+#[cfg(test)]
+mod growth_tests {
+    use super::*;
+
+    #[test]
+    fn growth_ring_cooling() {
+        let r = GrowthRing::new("Aria", "first kiss", 0.9, 0);
+        assert!(r.cooled_strength(0) > 0.8);
+        assert!(r.cooled_strength(10) > 0.6); // strong resists
+        let weak = GrowthRing::new("Aria", "lost keys", 0.2, 0);
+        assert!(weak.cooled_strength(5) < 0.1);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

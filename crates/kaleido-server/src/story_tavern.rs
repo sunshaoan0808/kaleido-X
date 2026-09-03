@@ -837,6 +837,10 @@ pub fn router() -> Router<AppState> {
             post(restore_save),
         )
         .route(
+            "/api/v1/story-tavern/sessions/{id}/saves/{save_id}/fork",
+            post(fork_save),
+        )
+        .route(
             "/api/v1/story-tavern/sessions/{id}/stop",
             post(stop_turn),
         )
@@ -888,6 +892,122 @@ pub fn router() -> Router<AppState> {
         .route(
             "/api/v1/story-tavern/sessions/{id}/actor-states",
             get(get_actor_states).put(put_actor_states),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/pockets",
+            get(get_pockets).put(put_pockets),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/pockets-enabled",
+            get(get_pockets_enabled).put(put_pockets_enabled),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/needs",
+            get(get_needs).put(put_needs),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/needs/tick",
+            post(tick_needs),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/growth",
+            get(get_growth).put(put_growth),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/world-climate",
+            get(get_world_climate).put(put_world_climate),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/chaos",
+            get(get_chaos).put(put_chaos),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/chaos/tick",
+            post(tick_chaos),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/milestones",
+            get(get_milestones),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/objectives",
+            get(get_objectives).post(create_objective),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/objectives/{oid}",
+            axum::routing::put(update_objective).delete(delete_objective),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/ambitions",
+            get(get_ambitions).post(create_ambition),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/dreams",
+            get(get_dreams).post(push_dream),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/episodes",
+            get(get_episodes).post(push_episode),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/journals",
+            get(get_journals).post(create_journal_card),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/journals/{card_id}",
+            axum::routing::put(update_journal_card).delete(delete_journal_card),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/journals/{card_id}/pin",
+            post(toggle_pin_journal),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/journals/recall",
+            post(recall_journals),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/journals/embed-missing",
+            post(embed_missing_journals),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/relationships",
+            get(get_relationships).put(put_relationships),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/relationships/tick",
+            post(tick_relationships),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/messages/{msg_id}/swipe",
+            get(get_swipe).put(put_swipe),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/storyline",
+            get(get_storyline),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/promises",
+            get(get_promises).post(create_promise),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/promises/{pid}",
+            axum::routing::put(resolve_promise),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/preferences",
+            get(get_preferences).put(put_preferences),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/presence",
+            get(get_presence).put(put_presence),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/mood",
+            get(get_mood),
+        )
+        .route(
+            "/api/v1/story-tavern/sessions/{id}/timed-world-info",
+            get(get_timed_world_info),
         )
         // [morphling Wave B3 2026-08-16] 章节剧情摘要账本（吸收自 BakemonoMemory
         // summary-memory-model）：GET 查看每章总结，PUT 手动修改（manual_edited 保护）。
@@ -1352,6 +1472,8 @@ async fn set_play_mode(
         engine_tag: None,
         program: None,
         reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
     });
     match state.sessions_tavern.save_with_revision(sess, &base_revision) {
@@ -1838,6 +1960,8 @@ async fn rebind_vessel(
         engine_tag: None,
         program: None,
         reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
     });
 
@@ -2754,6 +2878,28 @@ async fn restore_save(
     }
 }
 
+/// [跨会话分叉] 存档分叉到新会话（旧会话不动，新会话独立跑新剧情）。
+async fn fork_save(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, save_id)): Path<(String, String)>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let session = match session_from(&state, &headers) {
+        Ok(s) => s,
+        Err(r) => return r,
+    };
+    // ownership: source session must belong to caller
+    if let Err(e) = state.sessions_tavern.get_for_owner(&id, &session.user_id) {
+        return map_core_err(e);
+    }
+    let label = body.get("label").and_then(|v| v.as_str()).map(|s| s.to_string());
+    match state.sessions_tavern.fork_save_to_session(&id, &save_id, label) {
+        Ok(s) => Json(json!({"ok": true, "session": s})).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+
 // ─── P0-1 story_command（/rewind N 回退、/reroll 重生成）────────────────────
 
 /// 解析 "/rewind" / "/rewind 3" / "/rewind3"；无数字或缺省 → 1。
@@ -2814,6 +2960,18 @@ async fn do_reroll(state: &AppState, id: &str) -> kaleido_core::CoreResult<(u32,
         return Err(kaleido_core::CoreError::BadRequest(
             "turn in progress; stop or wait before reroll".into(),
         ));
+    }
+    // [Swipe 多备选] 旧正文不丢：最后一条 assistant 内容暂存 pending_swipes，下条消息继承
+    if let Some(last_asst) = sess.messages.iter().rev().find(|m| m.role == "assistant") {
+        if !last_asst.content.is_empty() {
+            // 去重：已在 swipes/pending 里的不重复存
+            let already = last_asst.swipes.iter().any(|s| s == &last_asst.content) || sess.pending_swipes.iter().any(|s| s == &last_asst.content);
+            if !already {
+                sess.pending_swipes.push(last_asst.content.clone());
+                // cap 10
+                if sess.pending_swipes.len() > 10 { sess.pending_swipes.remove(0); }
+            }
+        }
     }
     let last_user = sess
         .messages
@@ -4324,6 +4482,164 @@ fn build_tavern_system_prompt(
     //   模型在冲突时服从硬禁令 → 宿醉夏末雨夜被压成清晨晴春）。改为信号驱动一致语义：
     //   无剧情/玩家信号时延续当前状态；玩家输入或剧情所需（含作品/楔子/开场设定）以玩家与剧情为准，不算跳变。
     lines.push("\n## 当前时间与天气（权威状态，正文需遵守）".into());
+    // [P2-C 吞噬 Front Porch AI journal_physics.rs] Growth Rings（per-character 成长年轮）。
+    if !session.growth.rings.is_empty() {
+        let mut has_growth = false;
+        for cid in session.pockets.keys() {
+            let block = session.growth.injection_block(cid);
+            if !block.is_empty() { if !has_growth { lines.push("\n## 角色成长年轮（权威状态）".into()); has_growth = true; } lines.push(block); }
+        }
+        // 也覆盖没有口袋但有年轮的角色
+        for cid in session.growth.rings.iter().map(|r| r.character.clone()).collect::<std::collections::HashSet<_>>() {
+            if session.pockets.contains_key(&cid) { continue; }
+            let block = session.growth.injection_block(&cid);
+            if !block.is_empty() { if !has_growth { lines.push("\n## 角色成长年轮（权威状态）".into()); has_growth = true; } lines.push(block); }
+        }
+        let _ = has_growth;
+    }
+    // [P2-A 吞噬 Front Porch AI needs_simulation.rs] Needs 六维（饥饿驱动口袋）。
+    if !session.needs.is_empty() {
+        let mut has_needs = false;
+        for (cid, needs) in &session.needs {
+            let name = pack.characters.iter().find(|c| c.id == *cid).map(|c| c.name.as_str()).unwrap_or(cid.as_str());
+            let ctx = needs.needs_context(name);
+            if !ctx.is_empty() { if !has_needs { lines.push("\n## 角色状态（Needs 六维，0-100）".into()); has_needs = true; } lines.push(ctx.trim_end().to_string()); if needs.pending_catastrophe.is_some() { lines.push(format!("⚠️ Catastrophe pending for {name}: {}", needs.pending_catastrophe.as_deref().unwrap_or(""))); } }
+            // 口袋联动：饥饿时提示优先翻口袋食物
+            if needs.is_urgent("hunger") {
+                if let Some(p) = session.pockets.get(cid) {
+                    let has_food = p.carrying.iter().any(|it| it.name.to_ascii_lowercase().contains("food") || it.name.contains("食物") || it.name.contains("面包") || it.name.contains("水"));
+                    if has_food { lines.push(format!("提示：{name} 已饥饿（hunger urgent），口袋有食物，可先取用。")); }
+                }
+            }
+        }
+        let _ = has_needs;
+    }
+    // [P3-A 吞噬 Front Porch AI world.dart] World Climate（atmosphere/gravity/temp_band）。
+    if session.world_climate.atmosphere != kaleido_core::world_climate::WorldAtmosphere::Breathable || session.world_climate.gravity != kaleido_core::world_climate::WorldGravity::Earth || session.world_climate.temp_band.is_some() {
+        lines.push(format!("\n## 世界气候（权威状态）\natmosphere: {} | gravity: {} | temp_band: {}",
+            session.world_climate.atmosphere.as_str(), session.world_climate.gravity.as_str(), session.world_climate.temp_band.as_deref().unwrap_or("auto")));
+        lines.push("规则： hostile 需 suit 才能外出；需据此守卫 dress_for_weather。".into());
+    }
+    // [P4 吞噬 Front Porch AI chaos/tiers/objectives/dreams] Chaos + Tiers + 目标 + 夜梦碎屑。
+    if let Some(inj) = session.chaos.prompt_injection() { lines.push("\n## 命运事件（Chaos/Chance Time）".into()); lines.push(inj); lines.push("规则：此事件已触发，必须在正文中自然体现，不得忽略。".into()); }
+    if !session.milestones.is_empty() {
+        lines.push("\n## 关系里程碑".into());
+        for m in &session.milestones { lines.push(format!("- {} · {} · {} (turn {})", m.character, m.label, m.kind, m.turn)); }
+    }
+    if !session.objectives.is_empty() {
+        let active: Vec<_> = session.objectives.iter().filter(|o| o.status=="active").collect();
+        if !active.is_empty() {
+            lines.push("\n## 当前目标".into());
+            for o in active { let stage = kaleido_core::objectives::objective_stage_word(o); lines.push(format!("- [{}] {} ({})", o.owner, o.title, stage)); for t in &o.tasks { lines.push(format!("  - [{}] {}", if t.completed {"x"} else {" "}, t.title)); } }
+        }
+    }
+    if !session.ambitions.is_empty() {
+        let cur: Vec<_> = session.ambitions.iter().filter(|a| !a.completed).collect();
+        if !cur.is_empty() {
+            lines.push("\n## 长远野望".into());
+            for a in cur {
+                // ambition progress = linked objectives avg (fallback 0)
+                let linked: Vec<f64> = session.objectives.iter().filter(|o| o.owner==a.character && o.status!="abandoned").map(|o| o.progress()*100.0).collect();
+                let pct = if linked.is_empty() { 0.0 } else { linked.iter().sum::<f64>() / linked.len() as f64 };
+                let stage = kaleido_core::objectives::ambition_stage_word(pct);
+                lines.push(format!("- {}：{} ({})", a.character, a.text, stage));
+            }
+        }
+    }
+    if !session.episodes.crumbs.is_empty() {
+        lines.push("\n## 日常碎屑（近况）".into());
+        for c in session.episodes.recent_for_prompt(3) { lines.push(format!("- [{}] {}", c.kind, c.content)); }
+    }
+    if let Some(d) = &session.dream.last_dream { if !d.is_empty() { lines.push("\n## 昨夜之梦".into()); lines.push(d.clone()); } }
+    // [承诺债务 吞噬 Front Porch AI promise_debt] 未竟承诺追踪。
+    {
+        let pb = session.promises.injection_block();
+        if !pb.is_empty() { lines.push(pb); }
+    }
+    // [心情基线 吞噬 Front Porch AI mood_baseline] needs+时间+天气 → 开场 tint（只着色不驱动）。
+    {
+        // 首角色代表：needs 转 i32 map，time_of_day 从 game_clock 时段，天气从 game_clock.weather
+        let cid0 = session.present_character_ids.first().cloned().unwrap_or_default();
+        if !cid0.is_empty() {
+            if let Some(nd) = session.needs.get(&cid0) {
+                let m: std::collections::HashMap<String,i32> = nd.vector.clone();
+                let tod = session.game_clock.time_of_day.clone();
+                let w = session.game_clock.weather.clone();
+                let miserable = ["暴雨","大雨","暴雪","大雪","雾","大雾"].iter().any(|x| w.contains(x));
+                let beautiful = w=="晴";
+                let mb = kaleido_core::mood_presence::derive_mood(&m, &tod, miserable, beautiful);
+                let inj = mb.injection();
+                if !inj.is_empty() { lines.push(inj); }
+            }
+        }
+    }
+    // [在场推导 吞噬 Front Porch AI presence_derive] occupation/hours → At work/Away/With you。
+    if !session.presence.is_empty() {
+        let mut has_p = false;
+        for (cid, pr) in &session.presence {
+            if pr.occupation.is_empty() && pr.hours.is_empty() { continue; }
+            let name = pack.characters.iter().find(|c| c.id==*cid).map(|c| c.name.as_str()).unwrap_or(cid.as_str());
+            // clock: game_clock day/slot → minutes approx (slot index*180), weekday from day%7+1
+            let slot_idx = ["凌晨","清晨","上午","中午","下午","傍晚","夜晚","深夜"].iter().position(|s| session.game_clock.time_of_day.contains(s)).unwrap_or(2) as i32;
+            let clock_min = (slot_idx * 180 + 60) % 1440;
+            let weekday = (session.game_clock.day % 7 + 1) as i32;
+            let stance = session.relationships.get(cid).map(|b| b.spatial_stance.as_str()).unwrap_or("");
+            let with_user = session.relationships.get(cid).and_then(|b| b.with_user);
+            let in_scene = session.present_character_ids.contains(cid);
+            let w = kaleido_core::mood_presence::derive_presence(&pr.occupation, &pr.hours, clock_min, in_scene, weekday, pr.work_days.as_deref(), stance, with_user);
+            if w != kaleido_core::mood_presence::PresenceWhere::WithYou {
+                if !has_p { lines.push("\n## 在场状态".into()); has_p=true; }
+                lines.push(format!("- {name}: {} ({})", kaleido_core::mood_presence::presence_label(w), if w==kaleido_core::mood_presence::PresenceWhere::AtWork { format!("{} {}", pr.occupation, pr.hours) } else { String::new() }));
+            }
+        }
+        let _ = has_p;
+    }
+    // [场景渐隐 吞噬 Front Porch AI scenario_fade] scenario 随 user 消息数 10→0。
+    {
+        let user_n = session.messages.iter().filter(|m| m.role=="user").count();
+        let strength = kaleido_core::promise::scenario_strength(user_n);
+        // scenario 源：首节点 summary（开场设定），随会话拉长渐隐，避免喧宾夺主
+        let scenario_text = pack.nodes.first().map(|n| n.summary.clone()).unwrap_or_default();
+        if !scenario_text.is_empty() {
+            let wrapped = kaleido_core::promise::wrap_scenario(&scenario_text, strength);
+            if !wrapped.is_empty() { lines.push("\n".to_string() + &wrapped); }
+        }
+    }
+    // [羁绊活数值 吞噬 Front Porch AI relationship_service] Bond/Trust/姿态/执念。
+    if !session.relationships.is_empty() {
+        lines.push("\n".to_string() + &kaleido_core::relationship::relationships_context(&session.relationships, &pack.characters.iter().map(|c| c.id.clone()).collect::<Vec<_>>()));
+    }
+    // [Journal 存量 吞噬 Front Porch AI journal_store] 热卡常驻（按热度+情绪加权，预算600字）。
+    if !session.journal.cards.is_empty() {
+        // 取会话首个角色的 journal 作代表（多角色时按 present_character_ids 依次）
+        let cids: Vec<String> = if session.present_character_ids.is_empty() { session.journal.cards.iter().map(|c| c.character_id.clone()).collect::<std::collections::HashSet<_>>().into_iter().collect() } else { session.present_character_ids.clone() };
+        for cid in cids {
+            let name = pack.characters.iter().find(|c| c.id==cid).map(|c| c.name.as_str()).unwrap_or(cid.as_str());
+            let cur_emotion = session.actor_states.actors.get(&cid).and_then(|a| a.fields.get("emotion")).and_then(|f| f.value.as_ref().and_then(|v| v.as_str()).map(|s| s.to_string())).unwrap_or_default();
+            let block = session.journal.injection_block(&session.session_id, &cid, name, &cur_emotion, 600);
+            if !block.is_empty() { lines.push(block); }
+        }
+    }
+    // [吞噬 Front Porch AI pockets.dart] 口袋与衣物（per-character, per-session，GameClock day 用于 setAside 晨间过期）。
+    // [P1-B Porch Life À la carte] Own switch. Does not need the Realism Engine.
+    // 关时提示词不注入，但数据仍保留（导演台仍可见，可再打开）。
+    if session.pockets_enabled && !session.pockets.is_empty() {
+        let day = session.game_clock.day;
+        let mut has_any = false;
+        for (cid, pockets) in &session.pockets {
+            let block = pockets.wardrobe_context(
+                pack.characters.iter().find(|c| c.id == *cid).map(|c| c.name.as_str()).unwrap_or(cid.as_str()),
+                day,
+            );
+            if !block.is_empty() {
+                if !has_any { lines.push("\n## 角色随身物品（口袋与衣物，权威状态）".into()); has_any = true; }
+                lines.push(block.trim_end().to_string());
+            }
+        }
+        if has_any {
+            lines.push("规则：角色当前穿着/携带以此为准，正文不得凭空增删；衣物脱下后入「暂存堆」(setAside)，次日清晨衣物过期、随身物不过期。".into());
+        }
+    }
     lines.push(format!("当前游戏时间：{}。", session.game_clock.state_line()));
     lines.push("规则：正文时间/天气默认延续当前权威状态；若玩家输入明确指定时间天气、或剧情/作品设定所需（如楔子、开场按原著氛围书写夏末雨夜），以玩家与剧情为准，不视为跳变。禁止无依据地随意改写。".into());
     lines.push("时间默认保持当前状态，不会自动流逝——只有剧情真正需要时间推进（过夜、赶路、等待、过了几天）时，才在本回合正文末尾用 [时间推进: <目标时段或天数>] 标注，由系统统一推进；不得因普通对话或闲聊推进时间。".into());
@@ -4553,11 +4869,41 @@ fn build_tavern_system_prompt(
         lines.push("多角色对白请用「角色名：内容」分行书写；旁白不加前缀或用「旁白：」。".into());
     }
 
-    // Lore entries filtered by chapter/node
+    // Lore entries filtered by chapter/node + sticky/cooldown timed effects (per-session, message-index based).
+    // chat_len = messages count (matches Front Porch chatLength semantics).
+    let chat_len = session.messages.len() as i32;
     let lore_entries = filter_lore_entries(&pack.lore_entries, session.chapter_cursor.as_deref().unwrap_or(""), session.node_id.as_deref().unwrap_or(""));
-    if !lore_entries.is_empty() {
-        lines.push("\n## 世界书 / Lore".into());
+    // timed bookkeeping: expire + sticky→cooldown transitions happen in save path (tick on turn end).
+    // here: partition into sticky-forced vs cooldown-suppressed vs normal.
+    {
+        let mut sticky_forced: Vec<&serde_json::Value> = vec![];
+        let mut suppressed: std::collections::HashSet<String> = std::collections::HashSet::new();
         for entry in &lore_entries {
+            let title = entry.get("title").and_then(|v| v.as_str()).unwrap_or("");
+            let key = if title.is_empty() { format!("pack.{}", entry.get("id").and_then(|v| v.as_str()).unwrap_or("?")) } else { format!("pack.{}", title) };
+            if let Some(eff) = session.timed_world_info.sticky.get(&key) {
+                if chat_len >= eff.start && chat_len < eff.end { sticky_forced.push(*entry); }
+            }
+            if let Some(eff) = session.timed_world_info.cooldown.get(&key) {
+                if chat_len >= eff.start && chat_len < eff.end { suppressed.insert(key.clone()); }
+            }
+        }
+        // merge: chapter-matched (minus suppressed) + sticky-forced (even if chapter moved on)
+        let mut merged: Vec<&serde_json::Value> = vec![];
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for entry in lore_entries.iter().chain(sticky_forced.iter()) {
+            let title = entry.get("title").and_then(|v| v.as_str()).unwrap_or("");
+            let key = if title.is_empty() { format!("pack.{}", entry.get("id").and_then(|v| v.as_str()).unwrap_or("?")) } else { format!("pack.{}", title) };
+            if suppressed.contains(&key) { continue; }
+            if !seen.insert(key) { continue; }
+            merged.push(*entry);
+        }
+        if !merged.is_empty() {
+            lines.push("\n## 世界书 / Lore".into());
+            // sticky pill line
+            let sticky_keys: Vec<String> = session.timed_world_info.sticky.iter().filter(|(_, e)| chat_len >= e.start && chat_len < e.end).map(|(k, e)| format!("{}（剩{}条）", k, e.end - chat_len)).collect();
+            if !sticky_keys.is_empty() { lines.push(format!("长效中：{}", sticky_keys.join(" · "))); }
+            for entry in &merged {
             let title = entry.get("title").and_then(|v| v.as_str()).unwrap_or("");
             let text = entry.get("text").or_else(|| entry.get("content")).and_then(|v| v.as_str()).unwrap_or("");
             if text.is_empty() {
@@ -4577,6 +4923,7 @@ fn build_tavern_system_prompt(
                 &format!("pack/{}/lore/{}", pack.id, source_id),
                 &body,
             ));
+            }
         }
     }
 
@@ -6720,6 +7067,8 @@ async fn start_turn(
             engine_tag: None,
             program: None,
             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
         };
         tavern.messages.push(user_msg);
@@ -8196,6 +8545,9 @@ async fn start_turn(
                     Some(reasoning_merged)
                 };
 
+                // [Swipe] 继承 pending_swipes（reroll 旧正文），去重后挂载
+                let mut inherited_swipes = std::mem::take(&mut sess.pending_swipes);
+                inherited_swipes.retain(|s| s != &story_body);
                 let asst_msg = TavernMessage {
                     id: format!("msg-{}", Uuid::new_v4()),
                     role: "assistant".into(),
@@ -8206,10 +8558,53 @@ async fn start_turn(
                     program,
                     reasoning: reasoning_final,
                     // [token 显示 2026-08-16] 上游 usage.total_tokens（无则 0，前端不显示）
+                    swipes: inherited_swipes,
+                    swipe_index: 0,
                     tokens: usage_tokens,
                 };
                 sess.messages.push(asst_msg);
                 sess.turn += 1;
+                // [世界书定时] 每回合 tick：sticky 到期→转 cooldown；新激活条目 record。
+                {
+                    let clen = sess.messages.len() as i32;
+                    // collect live lore keys for cooldown lookup
+                    let lore_now = filter_lore_entries(&pack.lore_entries, sess.chapter_cursor.as_deref().unwrap_or(""), sess.node_id.as_deref().unwrap_or(""));
+                    let by_key: std::collections::HashMap<String, &serde_json::Value> = lore_now.iter().map(|e| {
+                        let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
+                        let key = if title.is_empty() { format!("pack.{}", e.get("id").and_then(|v| v.as_str()).unwrap_or("?")) } else { format!("pack.{}", title) };
+                        (key, *e)
+                    }).collect();
+                    // tick: expire + sticky→cooldown (protected)
+                    let mut ended: Vec<String> = vec![];
+                    for (k, eff) in sess.timed_world_info.sticky.iter() {
+                        if clen >= eff.end || clen < eff.start { ended.push(k.clone()); }
+                    }
+                    for k in ended {
+                        if let Some(eff) = sess.timed_world_info.sticky.remove(&k) {
+                            let rewound = clen < eff.start;
+                            if !rewound {
+                                if let Some(entry) = by_key.get(&k) {
+                                    let cd = entry.get("cooldown").or_else(|| entry.get("extensions").and_then(|x| x.get("cooldown"))).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                                    if cd > 0 {
+                                        sess.timed_world_info.cooldown.insert(k.clone(), kaleido_core::WiTimedEffect { key: k.clone(), start: clen, end: clen + cd, protected: true });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    sess.timed_world_info.cooldown.retain(|_, eff| clen < eff.end && (clen >= eff.start || eff.protected));
+                    // record newly activated (chapter-matched, not suppressed, has sticky/cooldown)
+                    for (key, entry) in by_key {
+                        if sess.timed_world_info.sticky.contains_key(&key) || sess.timed_world_info.cooldown.contains_key(&key) { continue; }
+                        let st = entry.get("sticky").or_else(|| entry.get("extensions").and_then(|x| x.get("sticky"))).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                        let cd = entry.get("cooldown").or_else(|| entry.get("extensions").and_then(|x| x.get("cooldown"))).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                        if st > 0 {
+                            sess.timed_world_info.sticky.insert(key.clone(), kaleido_core::WiTimedEffect { key, start: clen, end: clen + st, protected: false });
+                        } else if cd > 0 {
+                            sess.timed_world_info.cooldown.insert(key.clone(), kaleido_core::WiTimedEffect { key, start: clen, end: clen + cd, protected: false });
+                        }
+                    }
+                }
                 // [时间天气系统] 回合结束推进权威时钟：
                 // 1) 若正文含 [时间推进: <时段|次日|N天后>] 标注 → 显式跳转；
                 //    2) 否则默认顺移 1 个时段（跨日 day+1）。
@@ -8849,6 +9244,8 @@ async fn start_turn(
                             engine_tag: None,
                             program: None,
                             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
                         };
                         sess.messages.push(canon_msg);
@@ -8988,6 +9385,8 @@ async fn start_turn(
                             engine_tag: None,
                             program: None,
                             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
                         });
 
@@ -10520,6 +10919,632 @@ async fn put_actor_states(
     }
 }
 
+/// [吞噬 Front Porch AI pockets.dart] 口袋与衣物（per-character, per-session）。
+async fn get_pockets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let session = match session_from(&state, &headers) {
+        Ok(s) => s,
+        Err(r) => return r,
+    };
+    match state.sessions_tavern.get_for_owner(&id, &session.user_id) {
+        Ok(s) => Json(json!({ "pockets": s.pockets })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+
+async fn put_pockets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) {
+        return r;
+    }
+    let mut sess = match state.sessions_tavern.get(&id) {
+        Ok(s) => s,
+        Err(e) => return map_core_err(e),
+    };
+    let map = match &body {
+        serde_json::Value::Object(m) => m,
+        _ => return bad_request("ST_POCKETS_BAD_BODY", "expected object {characterId: Pockets}"),
+    };
+    let mut updated = 0usize;
+    for (cid, v) in map {
+        if cid.is_empty() { continue; }
+        // allow pocketsEnabled alongside pocket entries: {"cc-xxx": {...}, "pocketsEnabled": true}
+        if cid == "pocketsEnabled" || cid == "enabled" {
+            if let Some(b) = v.as_bool() { sess.pockets_enabled = b; }
+            continue;
+        }
+        let p = kaleido_core::pockets::Pockets::from_json(v);
+        // normalize via from_json (caps, tidy)
+        sess.pockets.insert(cid.clone(), p);
+        updated += 1;
+    }
+    // [物品记忆卡] ops 形态 {characterId, ops:[...]} → apply + 确定性写 Journal item 卡
+    if let (Some(cid), Some(ops_v)) = (body.get("characterId").and_then(|v| v.as_str()), body.get("ops").and_then(|v| v.as_array())) {
+        let ops: Vec<kaleido_core::pockets::PocketOpReport> = ops_v.iter().filter_map(kaleido_core::pockets::PocketOpReport::from_json).collect();
+        if !ops.is_empty() && !cid.is_empty() {
+            let day = sess.game_clock.day;
+            let entry = sess.pockets.entry(cid.to_string()).or_default();
+            let mut events: Vec<kaleido_core::pockets::PocketEvent> = vec![];
+            kaleido_core::pockets::apply_pocket_ops(entry, &ops, None, day, Some(&mut events));
+            let drafts = kaleido_core::pockets::item_cards_from(&events);
+            let sid = sess.session_id.clone();
+            for (item, content) in drafts {
+                let mut card = kaleido_core::journal_store::JournalCard::new(sid.clone(), cid.to_string(), content, sess.turn);
+                card.kind = Some("item".into());
+                card.metadata_item = Some(item);
+                card.category = "moment".into();
+                sess.journal.add_card(card, 50);
+            }
+            updated += 1;
+        }
+    }
+    match state.sessions_tavern.save(sess) {
+        Ok(_) => Json(json!({ "ok": true, "updated": updated })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+
+/// [P1-B Porch Life À la carte] 口袋开关（默认开，Own switch）。
+async fn get_pockets_enabled(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let session = match session_from(&state, &headers) {
+        Ok(s) => s,
+        Err(r) => return r,
+    };
+    match state.sessions_tavern.get_for_owner(&id, &session.user_id) {
+        Ok(s) => Json(json!({ "pocketsEnabled": s.pockets_enabled })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+
+async fn put_pockets_enabled(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) {
+        return r;
+    }
+    let mut sess = match state.sessions_tavern.get(&id) {
+        Ok(s) => s,
+        Err(e) => return map_core_err(e),
+    };
+    let enabled = body.get("pocketsEnabled").and_then(|v| v.as_bool())
+        .or_else(|| body.get("enabled").and_then(|v| v.as_bool()))
+        .unwrap_or(true);
+    sess.pockets_enabled = enabled;
+    match state.sessions_tavern.save(sess) {
+        Ok(_) => Json(json!({ "ok": true, "pocketsEnabled": enabled })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+
+/// [P2+P3 吞噬 Front Porch AI needs/growth/climate] Needs/Growth/Climate API.
+async fn get_needs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => Json(json!({ "needs": sess.needs })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+async fn put_needs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let map = match &body { serde_json::Value::Object(m)=>m, _=>return bad_request("ST_NEEDS_BAD_BODY","expected object {characterId: Needs}")};
+    let mut updated=0usize;
+    for (cid, v) in map {
+        if cid.is_empty(){continue;}
+        let n = kaleido_core::needs::Needs::from_json(v);
+        sess.needs.insert(cid.clone(), n);
+        updated+=1;
+    }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"updated":updated})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn tick_needs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let rough = sess.world_climate.atmosphere != kaleido_core::world_climate::WorldAtmosphere::Breathable;
+    let clear = sess.game_clock.weather == "晴";
+    for needs in sess.needs.values_mut() { needs.tick_decay(rough, clear); }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_growth(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => Json(json!({ "growth": sess.growth })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+async fn put_growth(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    // body: {characterId, event, strength} or {rings: [GrowthRing]}
+    if let Some(arr) = body.get("rings").and_then(|v| v.as_array()) {
+        let rings: Vec<kaleido_core::character_arc::GrowthRing> = arr.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect();
+        sess.growth.rings = rings;
+    } else {
+        let cid = body.get("characterId").or_else(|| body.get("character")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let ev = body.get("event").or_else(|| body.get("triggerEvent")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let strength = body.get("strength").and_then(|v| v.as_f64()).unwrap_or(0.6) as f32;
+        if cid.is_empty() || ev.is_empty() { return bad_request("ST_GROWTH_BAD_BODY","need characterId + event") }
+        sess.growth.strengthen(&cid, &ev, strength, sess.turn);
+    }
+    let g = sess.growth.clone();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"growth":g})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_world_climate(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => Json(json!({ "worldClimate": sess.world_climate })).into_response(),
+        Err(e) => map_core_err(e),
+    }
+}
+async fn put_world_climate(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    sess.world_climate = kaleido_core::world_climate::WorldClimate::from_json(&body);
+    let wc = sess.world_climate.clone();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"worldClimate": wc})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [P4 吞噬 Front Porch AI chaos/tiers/objectives/dreams] P4 API handlers.
+async fn get_chaos(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"chaos": sess.chaos})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn put_chaos(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    if let Some(b) = body.get("enabled").and_then(|v| v.as_bool()) { sess.chaos.enabled = b; }
+    if let Some(b) = body.get("nsfw").and_then(|v| v.as_bool()) { sess.chaos.nsfw = b; }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"chaos": sess.chaos})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn tick_chaos(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    sess.chaos.tick();
+    let should = sess.chaos.should_trigger(rand::random::<u32>() % 100);
+    if should && !sess.chaos.has_pending() {
+        let char_name = sess.present_character_ids.first().and_then(|cid| sess.world.entities.values().find(|e| e.id==*cid).map(|e| e.name.clone())).unwrap_or_else(|| "角色".into());
+        let idx = rand::random::<usize>() % 20;
+        sess.chaos.arm_event(&char_name, idx);
+    }
+    let c = sess.chaos.clone();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"chaos": c, "triggered": should})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_milestones(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"milestones": sess.milestones})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_objectives(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"objectives": sess.objectives})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn create_objective(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let title = body.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if title.is_empty() { return bad_request("ST_OBJ_BAD","need title"); }
+    let owner = body.get("owner").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let tasks: Vec<String> = body.get("tasks").and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    let obj = kaleido_core::objectives::Objective::new(owner, title, tasks, sess.turn);
+    let ret = obj.clone();
+    sess.objectives.push(obj);
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"objective": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn update_objective(State(state): State<AppState>, headers: HeaderMap, Path((id, oid)): Path<(String,String)>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let Some(obj) = sess.objectives.iter_mut().find(|o| o.id==oid) else { return not_found("ST_OBJ_NOT_FOUND","objective not found") };
+    if let Some(tid)=body.get("taskId").and_then(|v| v.as_str()) { if let Some(c)=body.get("completed").and_then(|v| v.as_bool()) { obj.mark_task(tid,c); obj.auto_complete_if_all_done(); } }
+    if let Some(s)=body.get("status").and_then(|v| v.as_str()) { obj.status=s.to_string(); }
+    let ret = obj.clone();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"objective": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn delete_objective(State(state): State<AppState>, headers: HeaderMap, Path((id, oid)): Path<(String,String)>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let before=sess.objectives.len(); sess.objectives.retain(|o| o.id!=oid);
+    if sess.objectives.len()==before { return not_found("ST_OBJ_NOT_FOUND","not found") }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_ambitions(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"ambitions": sess.ambitions})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn create_ambition(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let character = body.get("character").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let text = body.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if text.is_empty() { return bad_request("ST_AMB_BAD","need text") }
+    let amb = kaleido_core::objectives::Ambition::new(character, text, sess.turn);
+    let ret=amb.clone(); sess.ambitions.push(amb);
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"ambition": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_dreams(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"dream": sess.dream, "episodes": sess.episodes})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn push_dream(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    if let Some(t)=body.get("dream").and_then(|v| v.as_str()) { sess.dream.last_dream = Some(t.to_string()); sess.dream.pending = false; }
+    if let Some(b)=body.get("pending").and_then(|v| v.as_bool()) { sess.dream.pending = b; }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"dream": sess.dream})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_episodes(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"episodes": sess.episodes})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn push_episode(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let kind = body.get("kind").and_then(|v| v.as_str()).unwrap_or("episode").to_string();
+    let content = body.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if content.is_empty() { return bad_request("ST_EP_BAD","need content") }
+    sess.episodes.push(kind, content, sess.turn);
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"episodes": sess.episodes})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [Journal 存量 吞噬 Front Porch AI journal_store] Journal card CRUD.
+async fn get_journals(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"journals": sess.journal.cards})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn create_journal_card(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let content = body.get("content").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if content.is_empty() { return bad_request("ST_JOURNAL_BAD","need content") }
+    let character_id = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if character_id.is_empty() { return bad_request("ST_JOURNAL_BAD","need characterId") }
+    let category = body.get("category").and_then(|v| v.as_str()).unwrap_or("memory").to_string();
+    let emotion_label = body.get("emotionLabel").or_else(|| body.get("emotion_label")).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let emotion_intensity = body.get("emotionIntensity").or_else(|| body.get("emotion_intensity")).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let kind = body.get("kind").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let mut card = kaleido_core::journal_store::JournalCard::new(id.clone(), character_id, content, sess.turn);
+    card.category = category;
+    card.emotion_label = emotion_label;
+    card.emotion_intensity = emotion_intensity;
+    card.kind = kind;
+    let ret = card.clone();
+    sess.journal.add_card(card, 50);
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"journal": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn update_journal_card(State(state): State<AppState>, headers: HeaderMap, Path((id, card_id)): Path<(String,String)>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let content = body.get("content").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let feeling = body.get("feeling").or_else(|| body.get("emotionLabel")).and_then(|v| v.as_str()).map(|s| s.to_string());
+    if !sess.journal.revise(&card_id, content, feeling) { return not_found("ST_JOURNAL_NOT_FOUND","card not found") }
+    let ret = sess.journal.cards.iter().find(|c| c.id==card_id).cloned();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"journal": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn delete_journal_card(State(state): State<AppState>, headers: HeaderMap, Path((id, card_id)): Path<(String,String)>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    if !sess.journal.retire(&card_id) { return not_found("ST_JOURNAL_NOT_FOUND","card not found") }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn toggle_pin_journal(State(state): State<AppState>, headers: HeaderMap, Path((id, card_id)): Path<(String,String)>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let pinned = body.get("pinned").and_then(|v| v.as_bool()).unwrap_or(true);
+    if !sess.journal.set_pinned(&card_id, pinned) { return not_found("ST_JOURNAL_NOT_FOUND","card not found") }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"pinned": pinned})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [羁绊活数值 吞噬 Front Porch AI relationship_service] Bond/Trust API.
+async fn get_relationships(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"relationships": sess.relationships})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn put_relationships(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    // body: {characterId, bondDelta, trustDelta, fixation, stance, withUser}
+    let cid = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if cid.is_empty() { return bad_request("ST_REL_BAD","need characterId") }
+    let bond_d = body.get("bondDelta").or_else(|| body.get("bond_delta")).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    let trust_d = body.get("trustDelta").or_else(|| body.get("trust_delta")).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+    // [偏好加权] event 文本命中 likes/dislikes 则 bond 放大 1.5x
+    let event_text = body.get("event").or_else(|| body.get("reason")).and_then(|v| v.as_str()).unwrap_or("");
+    let weight = sess.preferences.get(&cid).map(|p| kaleido_core::promise::preference_weight(event_text, &p.likes, &p.dislikes)).unwrap_or(1.0);
+    let bond_d = ((bond_d as f64) * weight).round() as i32;
+    let b = sess.relationships.entry(cid.clone()).or_default();
+    let (bond_cross, trust_cross) = b.apply_delta(bond_d, trust_d);
+    if let Some(fix)=body.get("fixation").and_then(|v| v.as_str()) { b.set_fixation(fix); }
+    if let Some(st)=body.get("stance").or_else(|| body.get("spatialStance")).and_then(|v| v.as_str()) { b.set_spatial(st); }
+    if let Some(v)=body.get("withUser").and_then(|v| v.as_bool()) { b.with_user = Some(v); }
+    // long check + decay bookkeeping + milestone
+    b.maybe_long_check();
+    // tier milestone + diary plant (warm/hurt/relieved/wary, salience-gated)
+    let sid0 = sess.session_id.clone();
+    let turn0 = sess.turn;
+    let msg_n0 = sess.messages.len() as i64;
+    let kick0 = sess.journal.salience_gate.allow(&sid0, msg_n0);
+    if let Some(tier)=bond_cross { if let Some(m)=kaleido_core::relationship_tiers::check_milestone(&cid, "bond", tier, turn0, &sess.milestones) {
+        let label = m.label.clone(); let rose = tier > 0; sess.milestones.push(m);
+        if kick0 { sess.journal.plant_milestone(&sid0, &cid, format!("Bond {}{} ({})", if rose {"deepened to "} else {"cooled to "}, label, cid), "bond", rose, turn0); }
+    } }
+    if let Some(tier)=trust_cross { if let Some(m)=kaleido_core::relationship_tiers::check_milestone(&cid, "trust", tier, turn0, &sess.milestones) {
+        let label = m.label.clone(); let rose = tier > 0; sess.milestones.push(m);
+        if kick0 { sess.journal.plant_milestone(&sid0, &cid, format!("Trust {}{} ({})", if rose {"rose to "} else {"fell to "}, label, cid), "trust", rose, turn0); }
+    } }
+    let ret = sess.relationships.get(&cid).cloned();
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"bond": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn tick_relationships(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let mut decayed=false;
+    for b in sess.relationships.values_mut() { if b.maybe_decay() { decayed=true; } }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"decayed": decayed, "relationships": sess.relationships})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [Swipe 多备选] 同条回复备选查看/切换。
+async fn get_swipe(State(state): State<AppState>, headers: HeaderMap, Path((id, msg_id)): Path<(String,String)>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => match sess.messages.iter().find(|m| m.id==msg_id) {
+            Some(m) => Json(json!({"id": m.id, "content": m.content, "swipes": m.swipes, "swipe_index": m.swipe_index})).into_response(),
+            None => not_found("ST_MSG_NOT_FOUND","message not found"),
+        },
+        Err(e)=>map_core_err(e),
+    }
+}
+async fn put_swipe(State(state): State<AppState>, headers: HeaderMap, Path((id, msg_id)): Path<(String,String)>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let idx = body.get("index").or_else(|| body.get("swipe_index")).and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let Some(m) = sess.messages.iter_mut().find(|m| m.id==msg_id) else { return not_found("ST_MSG_NOT_FOUND","message not found") };
+    if m.role != "assistant" { return bad_request("ST_SWIPE_ROLE","only assistant messages have swipes") }
+    // all versions = [content] + swipes dedup; index addresses that list
+    let mut versions: Vec<String> = vec![m.content.clone()];
+    for s in &m.swipes { if !versions.contains(s) { versions.push(s.clone()); } }
+    if idx >= versions.len() { return bad_request("ST_SWIPE_RANGE","index out of range") }
+    let new_content = versions[idx].clone();
+    // rebuild swipes = all other versions
+    let mut new_swipes: Vec<String> = versions.into_iter().enumerate().filter(|(i,_)| *i!=idx).map(|(_,s)| s).collect();
+    // cap 10
+    if new_swipes.len() > 10 { new_swipes = new_swipes[new_swipes.len()-10..].to_vec(); }
+    m.content = new_content;
+    m.swipes = new_swipes;
+    m.swipe_index = 0;
+    match state.sessions_tavern.save(sess.clone()) {
+        Ok(_)=> {
+            let mm = sess.messages.iter().find(|x| x.id==msg_id).cloned();
+            Json(json!({"ok":true,"message": mm})).into_response()
+        },
+        Err(e)=>map_core_err(e),
+    }
+}
+
+/// [Our Story 时间线] milestones/journal/growth/objectives/chance 聚合只读。
+async fn get_storyline(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => {
+            let mut items: Vec<serde_json::Value> = vec![];
+            for m in &sess.milestones { items.push(json!({"kind":"milestone","turn": m.turn, "text": format!("{} · {} · {}", m.character, m.label, m.kind)})); }
+            for c in &sess.journal.cards { if c.pinned || c.emotion_intensity.as_deref()==Some("strong") || matches!(c.kind.as_deref(), Some("dream")|Some("milestone")|Some("promise")|Some("ambition")|Some("item")) { items.push(json!({"kind":"memory","turn": c.created_at_turn, "text": c.content, "receipts": c.source_positions, "id": c.id})); } }
+            let actives = sess.growth.active_for_all();
+            for (cid, rings) in actives { for r in rings { items.push(json!({"kind":"ring","turn": r.created_at_turn, "text": format!("{cid}：{}", r.trigger_event)})); } }
+            for o in &sess.objectives { if o.status=="completed" { items.push(json!({"kind":"objective","turn": o.created_at_turn, "text": o.title})); } }
+            for c in sess.episodes.crumbs.iter().take(20) { items.push(json!({"kind":"episode","turn": c.created_at_turn, "text": format!("[{}] {}", c.kind, c.content)})); }
+            items.sort_by(|a,b| a.get("turn").and_then(|v| v.as_u64()).unwrap_or(0).cmp(&b.get("turn").and_then(|v| v.as_u64()).unwrap_or(0)));
+            Json(json!({"storyline": items, "count": items.len()})).into_response()
+        },
+        Err(e)=>map_core_err(e),
+    }
+}
+
+/// [承诺债务/偏好 吞噬 Front Porch AI promise_debt/preference] Promises + Prefs API.
+async fn get_promises(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"promises": sess.promises.promises})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn create_promise(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let text = body.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if text.is_empty() { return bad_request("ST_PROMISE_BAD","need text") }
+    let character = body.get("character").or_else(|| body.get("characterId")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let party = body.get("party").and_then(|v| v.as_str()).unwrap_or("char").to_string();
+    let p = kaleido_core::promise::Promise::new(character, party, text, sess.turn);
+    let ret=p.clone(); sess.promises.push(p);
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"promise": ret})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn resolve_promise(State(state): State<AppState>, headers: HeaderMap, Path((id, pid)): Path<(String,String)>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let kept = body.get("kept").and_then(|v| v.as_bool()).unwrap_or(true);
+    let deltas = sess.promises.resolve(&pid, kept, sess.turn);
+    // 失信/守信联动 relationship + diary promise card (salience-gated)
+    let sid_p = sess.session_id.clone();
+    let turn_p = sess.turn;
+    let kick_p = sess.journal.salience_gate.allow(&sid_p.clone(), sess.messages.len() as i64);
+    if let Some((bond_d, trust_d)) = deltas {
+        let ptext = sess.promises.promises.iter().find(|p| p.id==pid).map(|p| (p.character.clone(), p.text.clone()));
+        // diary promise card (kept/broken, salience-gated)
+        if kick_p {
+            if let Some((ch, tx)) = ptext.clone() {
+                let emo = if kept {"relieved"} else {"hurt"};
+                sess.journal.maybe_write_auto(&sid_p, if ch.is_empty() {"narrator"} else {ch.as_str()}, format!("Promise {}: {}", if kept {"kept"} else {"broken"}, tx), "promise", Some(emo.into()), turn_p);
+            }
+        }
+        let character = ptext.map(|(c,_)| c).unwrap_or_default();
+        if !character.is_empty() {
+            let b = sess.relationships.entry(character.clone()).or_default();
+            let (bc, tc) = b.apply_delta(bond_d, trust_d);
+            if let Some(tier)=bc { if let Some(m)=kaleido_core::relationship_tiers::check_milestone(&character, "bond", tier, turn_p, &sess.milestones) {
+                let lb=m.label.clone(); let rose=tier>0; sess.milestones.push(m);
+                if kick_p { sess.journal.plant_milestone(&sid_p, &character, format!("Bond {}{}", if rose {"deepened to "} else {"cooled to "}, lb), "bond", rose, turn_p); }
+            } }
+            if let Some(tier)=tc { if let Some(m)=kaleido_core::relationship_tiers::check_milestone(&character, "trust", tier, turn_p, &sess.milestones) {
+                let lb=m.label.clone(); let rose=tier>0; sess.milestones.push(m);
+                if kick_p { sess.journal.plant_milestone(&sid_p, &character, format!("Trust {}{}", if rose {"rose to "} else {"fell to "}, lb), "trust", rose, turn_p); }
+            } }
+        }
+    }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"deltas": deltas.map(|(b,t)| json!({"bond":b,"trust":t}))})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn get_preferences(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"preferences": sess.preferences})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn put_preferences(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    // body: {characterId, likes:[], dislikes:[]}
+    let cid = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if cid.is_empty() { return bad_request("ST_PREF_BAD","need characterId") }
+    let likes: Vec<String> = body.get("likes").and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    let dislikes: Vec<String> = body.get("dislikes").and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    sess.preferences.insert(cid, kaleido_core::promise::Prefs { likes, dislikes });
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"preferences": sess.preferences})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [心情/在场 吞噬 Front Porch AI mood/presence] Mood + Presence API.
+async fn get_mood(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => {
+            let cid0 = sess.present_character_ids.first().cloned().unwrap_or_default();
+            let mb = sess.needs.get(&cid0).map(|nd| {
+                let m: std::collections::HashMap<String,i32> = nd.vector.clone();
+                let miserable = ["暴雨","大雨","暴雪","大雪","雾","大雾"].iter().any(|x| sess.game_clock.weather.contains(x));
+                let beautiful = sess.game_clock.weather=="晴";
+                kaleido_core::mood_presence::derive_mood(&m, &sess.game_clock.time_of_day, miserable, beautiful)
+            }).unwrap_or_else(kaleido_core::mood_presence::MoodBaseline::neutral);
+            Json(json!({"mood": mb})).into_response()
+        },
+        Err(e)=>map_core_err(e),
+    }
+}
+async fn get_presence(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"presence": sess.presence})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn put_presence(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    // body: {characterId, occupation, hours, brief, workDays}
+    let cid = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    if cid.is_empty() { return bad_request("ST_PRES_BAD","need characterId") }
+    let e = sess.presence.entry(cid).or_default();
+    if let Some(v)=body.get("occupation").and_then(|v| v.as_str()) { e.occupation=v.to_string(); }
+    if let Some(v)=body.get("hours").and_then(|v| v.as_str()) { e.hours=v.to_string(); }
+    if let Some(v)=body.get("brief").and_then(|v| v.as_str()) { e.brief=v.to_string(); }
+    if let Some(a)=body.get("workDays").or_else(|| body.get("work_days")).and_then(|v| v.as_array()) { e.work_days=Some(a.iter().filter_map(|v| v.as_i64().map(|x| x as i32)).collect()); }
+    match state.sessions_tavern.save(sess.clone()) { Ok(_)=>Json(json!({"ok":true,"presence": sess.presence})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [Journal 冷卡召回] cosine(0.45, top3) + 关键词 floor；命中 rewarm。
+async fn recall_journals(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let query_text = body.get("query_text").or_else(|| body.get("queryText")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let query_vector: Vec<f32> = body.get("query_vector").or_else(|| body.get("queryVector")).and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|x| x.as_f64().map(|f| f as f32)).collect()).unwrap_or_default();
+    let character_id = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    // character scope: explicit or all present
+    let cids: Vec<String> = if character_id.is_empty() {
+        if sess.present_character_ids.is_empty() {
+            sess.journal.cards.iter().map(|c| c.character_id.clone()).collect::<std::collections::HashSet<_>>().into_iter().collect()
+        } else { sess.present_character_ids.clone() }
+    } else { vec![character_id] };
+    let mut recalled: Vec<serde_json::Value> = vec![];
+    for cid in cids {
+        let ids = sess.journal.recall_cold(&sess.session_id, &cid, &query_vector, &query_text, 0.45, 3);
+        for rid in ids {
+            sess.journal.rewarm(&rid);
+            if let Some(c) = sess.journal.cards.iter().find(|c| c.id==rid) {
+                recalled.push(json!({"id": c.id, "characterId": c.character_id, "content": c.content, "heat": c.heat}));
+            }
+        }
+    }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"recalled": recalled})).into_response(), Err(e)=>map_core_err(e)}
+}
+/// [Journal embedding 回填] 无向量卡片用 fastembed 本地补向量（无则跳过）。
+async fn embed_missing_journals(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    // collect contents needing vectors
+    let need: Vec<(String, String)> = sess.journal.cards.iter().filter(|c| c.embedding.is_empty()).map(|c| (c.id.clone(), c.content.clone())).collect();
+    if need.is_empty() { return Json(json!({"ok":true,"embedded": 0})).into_response(); }
+    // use embed_local singleton via AppState? fallback: skip if unavailable — try kaleido_server embed helper
+    let mut done = 0usize;
+    for (cid, content) in need.iter().take(20) {
+        // best-effort local fastembed; unavailable → keep no-RAG floor
+        match crate::embed_local::embed_one(content) {
+            Ok(vec) => { if let Some(card) = sess.journal.cards.iter_mut().find(|c| &c.id==cid) { card.embedding = vec; done += 1; } }
+            Err(_) => break,
+        }
+    }
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"embedded": done})).into_response(), Err(e)=>map_core_err(e)}
+}
+
+/// [世界书定时] sticky/cooldown 剩余只读（侧栏 pill）。
+async fn get_timed_world_info(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) {
+        Ok(sess) => {
+            let clen = sess.messages.len() as i32;
+            let sticky: Vec<serde_json::Value> = sess.timed_world_info.sticky.iter()
+                .filter(|(_, e)| clen >= e.start && clen < e.end)
+                .map(|(k, e)| json!({"key": k, "remaining": e.end - clen, "start": e.start, "end": e.end})).collect();
+            let cooldown: Vec<serde_json::Value> = sess.timed_world_info.cooldown.iter()
+                .filter(|(_, e)| clen >= e.start && clen < e.end)
+                .map(|(k, e)| json!({"key": k, "remaining": e.end - clen})).collect();
+            Json(json!({"sticky": sticky, "cooldown": cooldown, "chatLen": clen})).into_response()
+        },
+        Err(e)=>map_core_err(e),
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ActorArchiveRequest {
@@ -11767,6 +12792,8 @@ pub(crate) fn sweep_orphan_runs(state: &AppState) {
             engine_tag: None,
             program: None,
             reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
         });
         if let Err(e) = state.sessions_tavern.save(sess.clone()) {
@@ -13180,6 +14207,8 @@ mod tests {
                 content: "啊".repeat(TURN_EPOCH_HARD_CHARS + 100),
                 created_at: String::new(),
                 options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
                 engine_tag: None,
                 program: None,
                 reasoning: None,
@@ -13206,6 +14235,8 @@ mod tests {
                 engine_tag: None,
                 program: None,
                 reasoning: None,
+            swipes: vec![],
+            swipe_index: 0,
             tokens: 0,
             });
         }
@@ -13290,6 +14321,8 @@ mod tests {
             content: "啊啊啊啊啊啊啊啊".into(),
             created_at: String::new(),
             options: vec![],
+            swipes: vec![],
+            swipe_index: 0,
             engine_tag: None,
             program: None,
             reasoning: None,
@@ -13375,6 +14408,7 @@ mod tests {
             voice: None,
             archive: None,
             avatar: None,
+            starting_wardrobe: Default::default(),
         }
     }
 

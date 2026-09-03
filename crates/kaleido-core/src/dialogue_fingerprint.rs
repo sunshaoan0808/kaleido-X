@@ -380,6 +380,7 @@ mod tests {
             voice: None,
             archive: None,
             avatar: None,
+                starting_wardrobe: Default::default(),
         }
     }
 

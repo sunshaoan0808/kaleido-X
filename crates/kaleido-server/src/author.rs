@@ -809,6 +809,7 @@ fn partner_to_pack_char(item: &kaleido_core::PartnerItem) -> PackCharacterRef {
             voice: None,
             archive: None,
         avatar: None,
+        starting_wardrobe: Default::default(),
     }
 }
 
@@ -1097,6 +1098,7 @@ async fn compose_project(
             voice: None,
             archive: None,
                 avatar: None,
+                starting_wardrobe: Default::default(),
             });
         }
     }
@@ -1212,6 +1214,7 @@ async fn compose_project(
             voice: None,
             archive: None,
                 avatar: None,
+                starting_wardrobe: Default::default(),
             });
         }
         match state.packs.save(pack.clone()) {
@@ -1663,6 +1666,7 @@ async fn publish_project(
             voice: None,
             archive: None,
                     avatar: None,
+                    starting_wardrobe: Default::default(),
                 });
             }
         }
@@ -2022,6 +2026,8 @@ async fn inject_to_session(
         options: vec![],
         engine_tag: None,
         program: None,
+        swipes: vec![],
+        swipe_index: 0,
         tokens: 0,
     };
     // Check TavernMessage fields - may differ
