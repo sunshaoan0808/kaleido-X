@@ -11917,7 +11917,7 @@ async fn run_event_extract(
     let names: Vec<String> = pack_chars.iter().map(|(_, n)| n.clone()).collect();
     let name_of = |cid: &str| pack_chars.iter().find(|(id, _)| id == cid).map(|(_, n)| n.clone()).unwrap_or_else(|| cid.to_string());
     let sys = format!(
-        "你是剧情事件提取器。只做提取，不创作、不续写。角色：{}。只输出 JSON（无 markdown 包裹），六个数组键必须全有（gives/promises/growth/bond/needs/journal），无事件则为空数组。规则：gives 仅当明确给出/递出/塞入/放在桌上；promises 仅当明确将来时承诺；growth：任何角色态度软化/强硬/透露身世/情绪波动都算一次（strength 0.3-0.8）；bond：任何好感/信任增减都给分（正负1到10），初次善意至少+2；journal：每回合至少记1条本回合最值得记住的事（kind=moment）；needs：疲惫/饥饿/寒冷/口渴等生理信号出现才记。",
+        "你是剧情事件提取器。只做提取，不创作、不续写。角色：{}。只输出 JSON（无 markdown 包裹），六个数组键必须全有（gives/promises/growth/bond/needs/journal），无事件则为空数组。规则：gives 包括人物间给予（给出/递出/塞入/放在桌上，填 from/to/item）与自取拾取（拿起/收起/攥在手心/装进口袋，to 填玩家，from 可空）；promises 仅当明确将来时承诺；growth：任何角色态度软化/强硬/透露身世/情绪波动都算一次（strength 0.3-0.8）；bond：任何好感/信任增减都给分（正负1到10），初次善意至少+2；journal：每回合至少记1条本回合最值得记住的事（kind=moment）；needs：疲惫/饥饿/寒冷/口渴等生理信号出现才记。",
         names.join("、")
     );
     let user = format!("玩家输入：{}\n\n本回合正文：{}\n\n在场角色 id：{}", user_msg, full_text.chars().take(3000).collect::<String>(), present.join(","));
@@ -11948,26 +11948,61 @@ async fn run_event_extract(
                 g.get("to").or_else(|| g.get("target")).or_else(|| g.get("character")).and_then(|x| x.as_str()).unwrap_or("").trim(),
                 g.get("item").or_else(|| g.get("itemName")).or_else(|| g.get("name")).and_then(|x| x.as_str()).unwrap_or("").trim(),
             );
-            if item.is_empty() || to_name.is_empty() { continue; }
-            let to_cid = pack_chars.iter().find(|(_, n)| n == to_name).map(|(id, _)| id.clone()).unwrap_or_default();
-            if to_cid.is_empty() { continue; }
+            if item.is_empty() { continue; }
+            // to 缺省/玩家 → 自取 Pickup（narrator 口袋）；to 明确他人 → Give 转移（扣 from 加 to）。
+            let to_is_player = to_name.is_empty() || to_name.contains("玩家") || to_name.to_lowercase().contains("player");
             let day = sess.game_clock.day;
-            let ops = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Pickup, item: item.to_string(), to: String::new(), state: String::new(), where_: String::new() }];
-            let entry = sess.pockets.entry(to_cid.clone()).or_default();
-            let mut events: Vec<kaleido_core::pockets::PocketEvent> = vec![];
-            kaleido_core::pockets::apply_pocket_ops(entry, &ops, None, day, Some(&mut events));
-            let drafts = kaleido_core::pockets::item_cards_from(&events);
-            for (it, content) in drafts {
-                let mut card = kaleido_core::journal_store::JournalCard::new(sid.clone(), to_cid.clone(), content, turn);
-                card.kind = Some("item".into());
-                card.metadata_item = Some(it);
-                card.category = "moment".into();
-                sess.journal.add_card(card, 50);
+            if to_is_player {
+                let ops = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Pickup, item: item.to_string(), to: String::new(), state: String::new(), where_: String::new() }];
+                let entry = sess.pockets.entry("narrator".to_string()).or_default();
+                let mut events: Vec<kaleido_core::pockets::PocketEvent> = vec![];
+                kaleido_core::pockets::apply_pocket_ops(entry, &ops, None, day, Some(&mut events));
+                for (it, content) in kaleido_core::pockets::item_cards_from(&events) {
+                    let mut card = kaleido_core::journal_store::JournalCard::new(sid.clone(), "narrator".to_string(), content, turn);
+                    card.kind = Some("item".into());
+                    card.metadata_item = Some(it);
+                    card.category = "moment".into();
+                    sess.journal.add_card(card, 50);
+                }
+                dirty = true;
+            } else {
+                let to_cid = pack_chars.iter().find(|(_, n)| n == to_name).map(|(id, _)| id.clone()).unwrap_or_else(|| to_name.into());
+                let from_cid = if from_name.is_empty() { "narrator".to_string() }
+                    else { pack_chars.iter().find(|(_, n)| n == from_name).map(|(id, _)| id.clone()).unwrap_or_else(|| if from_name.contains("玩家") || from_name.to_lowercase().contains("player") { "narrator".into() } else { from_name.into() }) };
+                // 先从 from 扣（Give 会清掉 from 持有的同名物），再给 to 加
+                let ops = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Give, item: item.to_string(), to: to_cid.clone(), state: String::new(), where_: String::new() }];
+                let mut moved: Vec<(String, kaleido_core::pockets::PocketItem)> = vec![];
+                {
+                    let entry = sess.pockets.entry(from_cid.clone()).or_default();
+                    let mut cb = |to: String, it: kaleido_core::pockets::PocketItem| { moved.push((to, it)); };
+                    let mut events: Vec<kaleido_core::pockets::PocketEvent> = vec![];
+                    kaleido_core::pockets::apply_pocket_ops(entry, &ops, Some(&mut cb), day, Some(&mut events));
+                    for (it, content) in kaleido_core::pockets::item_cards_from(&events) {
+                        let mut card = kaleido_core::journal_store::JournalCard::new(sid.clone(), from_cid.clone(), content, turn);
+                        card.kind = Some("item".into());
+                        card.metadata_item = Some(it);
+                        card.category = "moment".into();
+                        sess.journal.add_card(card, 50);
+                    }
+                }
+                for (to, it) in moved {
+                    let dest = sess.pockets.entry(to.clone()).or_default();
+                    if !dest.carrying.iter().any(|x| kaleido_core::pockets::same_item(&x.name, &it.name)) {
+                        dest.carrying.push(it);
+                    }
+                }
+                // from==narrator 且持有 → 上面 Give 已扣；若 from 无此物（凭空给）→ to 直接 Pickup 补
+                if sess.pockets.get(&to_cid).map(|p| !p.carrying.iter().any(|x| kaleido_core::pockets::same_item(&x.name, item))).unwrap_or(true) {
+                    let dest = sess.pockets.entry(to_cid.clone()).or_default();
+                    let ops2 = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Pickup, item: item.to_string(), to: String::new(), state: String::new(), where_: String::new() }];
+                    let mut events2: Vec<kaleido_core::pockets::PocketEvent> = vec![];
+                    kaleido_core::pockets::apply_pocket_ops(dest, &ops2, None, day, Some(&mut events2));
+                }
+                dirty = true;
             }
-            dirty = true;
-            let _ = from_name;
         }
     }
+    tracing::info!(%session_id, turn, gives_raw = %v.get("gives").map(|x| x.to_string()).unwrap_or_default().chars().take(500).collect::<String>(), "st event_extract bg: gives raw");
     // promises → promise store
     if let Some(arr) = v.get("promises").and_then(|x| x.as_array()) {
         for pr in arr {

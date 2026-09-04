@@ -616,6 +616,7 @@ pub fn item_cards_from(events: &[PocketEvent]) -> Vec<(String, String)> {
             PocketOpKind::Setdown => drafts.push((e.item.clone(), format!("I set my {} down{}.", e.item, placed(&e.where_)))),
             PocketOpKind::Give => drafts.push((e.item.clone(), if e.to.is_empty() { format!("I handed my {} over.", e.item) } else { format!("I gave my {} to {}.", e.item, e.to) })),
             PocketOpKind::Drop => drafts.push((e.item.clone(), format!("I parted with my {}{}.", e.item, placed(&e.where_)))),
+            PocketOpKind::Pickup => drafts.push((e.item.clone(), format!("I picked up {}{}.", e.item, placed(&e.where_)))),
             _ => {}
         }
     }
