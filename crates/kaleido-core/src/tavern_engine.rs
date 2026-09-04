@@ -1273,6 +1273,7 @@ mod tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             turn_progress: None,
             world: WorldState::default(),
             game_clock: Default::default(),

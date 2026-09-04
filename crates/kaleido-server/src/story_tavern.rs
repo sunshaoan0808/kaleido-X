@@ -1006,6 +1006,10 @@ pub fn router() -> Router<AppState> {
             get(get_mood),
         )
         .route(
+            "/api/v1/story-tavern/sessions/{id}/event-extract",
+            get(get_event_extract).put(put_event_extract),
+        )
+        .route(
             "/api/v1/story-tavern/sessions/{id}/timed-world-info",
             get(get_timed_world_info),
         )
@@ -8788,6 +8792,29 @@ async fn start_turn(
                 if let Err(e) = sessions_store.save(sess.clone()) {
                     tracing::warn!(error = %e, "failed to save session before done");
                 }
+                // [全自动事件提取] 回合末后台 LLM：物品/承诺/成长/羁绊直写（默认开，小模型低 token）。
+                // 后台执行不阻断 done；fresh 读 + CAS 写回；失败静默（下回合 prompt 仍有全量状态）。
+                if sess.event_extract {
+                    let store_ex = sessions_store.clone();
+                    let appst_ex = state.app_state.clone();
+                    let base_ex = state.llm_base.clone();
+                    let key_ex = state.llm_key.clone();
+                    let model_ex = state.llm_model.clone();
+                    let sid_ex = session_id_bg.clone();
+                    let turn_ex = sess.turn;
+                    let user_ex = user_bg.clone();
+                    let full_ex = full_text.clone();
+                    let present_ex = sess.present_character_ids.clone();
+                    let focus_ex = sess.focus_character_id.clone().unwrap_or_default();
+                    let pack_chars_ex: Vec<(String,String)> = pack.characters.iter().map(|c| (c.id.clone(), c.name.clone())).collect();
+                    tokio::spawn(async move {
+                        tracing::info!(%sid_ex, turn = turn_ex, "st event_extract bg: start");
+                        match run_event_extract(&store_ex, &appst_ex, base_ex.as_deref(), key_ex.as_deref(), &model_ex, &sid_ex, turn_ex, &user_ex, &full_ex, &present_ex, &focus_ex, &pack_chars_ex).await {
+                            Ok(_) => tracing::info!(%sid_ex, "st event_extract bg: done"),
+                            Err(e) => tracing::warn!(error = %e, %sid_ex, "st event_extract bg: failed, non-blocking"),
+                        }
+                    });
+                }
                 
                 // Finish: send done event
                 let _ = tx.send(ChatStreamEvent {
@@ -9668,6 +9695,7 @@ async fn start_turn(
                 // 以既有保留策略限制容量：core `push_checkpoint` 自带 MAX_CHECKPOINTS(30) 最旧裁剪，
                 // 与 restore_checkpoint 的截断语义对齐，回合级快照不会无界增长。
                 sess.push_checkpoint();
+                remerge_bg_fields(&sessions_store, &mut sess);
                 let _ = sessions_store.save(sess);
             }
         }
@@ -10407,6 +10435,7 @@ async fn run_director_plan(
             Err(e) => Some(e.clone()),
             _ => None,
         };
+        remerge_bg_fields(&sessions_store, &mut fresh);
         if let Err(e) = sessions_store.save(fresh.clone()) {
             tracing::warn!(error = %e, %session_id_bg, "director plan bg: save failed");
         }
@@ -11560,6 +11589,19 @@ async fn embed_missing_journals(State(state): State<AppState>, headers: HeaderMa
     match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"embedded": done})).into_response(), Err(e)=>map_core_err(e)}
 }
 
+/// [全自动事件提取] 开关。
+async fn get_event_extract(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
+    let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
+    match state.sessions_tavern.get_for_owner(&id, &s.user_id) { Ok(sess)=>Json(json!({"eventExtract": sess.event_extract})).into_response(), Err(e)=>map_core_err(e)}
+}
+async fn put_event_extract(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>, Json(body): Json<serde_json::Value>) -> Response {
+    if let Err(r) = session_from(&state, &headers) { return r; }
+    let mut sess = match state.sessions_tavern.get(&id) { Ok(s)=>s, Err(e)=>return map_core_err(e) };
+    let v = body.get("eventExtract").or_else(|| body.get("enabled")).and_then(|x| x.as_bool()).unwrap_or(true);
+    sess.event_extract = v;
+    match state.sessions_tavern.save(sess) { Ok(_)=>Json(json!({"ok":true,"eventExtract": v})).into_response(), Err(e)=>map_core_err(e)}
+}
+
 /// [世界书定时] sticky/cooldown 剩余只读（侧栏 pill）。
 async fn get_timed_world_info(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<String>) -> Response {
     let s = match session_from(&state, &headers) { Ok(x)=>x, Err(r)=>return r };
@@ -11831,6 +11873,263 @@ pub async fn style_analysis(
 // ─── U13 M1: Character Memory Analysis / Optimization ───────────────────────
 
 /// Helper: non-streaming LLM call returning text content.
+/// 回合 worker 保存前重合并后台字段：worker sess 在回合初加载，后台任务
+/// （事件提取/roster/记忆提取）在回合中落盘的增量会被 worker 的整包 save 覆盖。
+/// 保存前从盘 fresh 读一次，把 7 组后台字段并回 sess（worker 本回合的同名字段以 worker 为准合并）。
+fn remerge_bg_fields(store: &kaleido_core::TavernSessionStore, sess: &mut kaleido_core::TavernSession) {
+    let Ok(fresh) = store.get(&sess.session_id) else { return; };
+    for (cid, v) in fresh.pockets { sess.pockets.entry(cid).or_insert(v); }
+    for c in fresh.journal.cards {
+        if !sess.journal.cards.iter().any(|x| x.id == c.id) { sess.journal.cards.push(c); }
+    }
+    for pr in fresh.promises.promises {
+        if !sess.promises.promises.iter().any(|x| x.id == pr.id) { sess.promises.push(pr); }
+    }
+    for r in fresh.growth.rings {
+        if !sess.growth.rings.iter().any(|x| x.id == r.id) { sess.growth.rings.push(r); }
+    }
+    for (cid, b) in fresh.relationships { sess.relationships.entry(cid).or_insert(b); }
+    for m in fresh.milestones {
+        if !sess.milestones.iter().any(|x| x.character == m.character && x.label == m.label) { sess.milestones.push(m); }
+    }
+    for (cid, n) in fresh.needs { sess.needs.entry(cid).or_insert(n); }
+}
+
+/// [全自动事件提取] 回合末后台 LLM：从玩家消息+本回合正文提取结构化事件，直写存储。
+/// 小模型低 token（max_tokens 512, temperature 0.1）：只做提取不做创作。
+/// 返回 JSON：{gives:[{from,to,item}], promises:[{character,text}], growth:[{character,event,strength}],
+///  bond:[{character,bondDelta,trustDelta}], needs:[{character,need,delta}], journal:[{character,content,kind}]}。
+/// 全部 fail-open：解析失败/空即跳过；写前去重；salience 门限流种卡。
+async fn run_event_extract(
+    store: &kaleido_core::TavernSessionStore,
+    appst: &kaleido_core::AppStateStore,
+    base: Option<&str>,
+    key: Option<&str>,
+    model: &str,
+    session_id: &str,
+    turn: u32,
+    user_msg: &str,
+    full_text: &str,
+    present: &[String],
+    focus: &str,
+    pack_chars: &[(String, String)],
+) -> Result<(), String> {
+    let names: Vec<String> = pack_chars.iter().map(|(_, n)| n.clone()).collect();
+    let name_of = |cid: &str| pack_chars.iter().find(|(id, _)| id == cid).map(|(_, n)| n.clone()).unwrap_or_else(|| cid.to_string());
+    let sys = format!(
+        "你是剧情事件提取器。只做提取，不创作、不续写。角色：{}。只输出 JSON（无 markdown 包裹），六个数组键必须全有（gives/promises/growth/bond/needs/journal），无事件则为空数组。规则：gives 仅当明确给出/递出/塞入/放在桌上；promises 仅当明确将来时承诺；growth：任何角色态度软化/强硬/透露身世/情绪波动都算一次（strength 0.3-0.8）；bond：任何好感/信任增减都给分（正负1到10），初次善意至少+2；journal：每回合至少记1条本回合最值得记住的事（kind=moment）；needs：疲惫/饥饿/寒冷/口渴等生理信号出现才记。",
+        names.join("、")
+    );
+    let user = format!("玩家输入：{}\n\n本回合正文：{}\n\n在场角色 id：{}", user_msg, full_text.chars().take(3000).collect::<String>(), present.join(","));
+    let raw = call_llm_extract_with(appst, base, key, model, &sys, &user).await?;
+    let v: serde_json::Value = crate::llm_stream::extract_json_value(&raw)
+        .or_else(|| serde_json::from_str(&raw).ok())
+        .ok_or_else(|| "extract json parse failed".to_string())?;
+    let mut sess = store.get(session_id).map_err(|e| e.to_string())?;
+    let sid = sess.session_id.clone();
+    let mut dirty = false;
+    {
+        let counts = ["gives","promises","growth","bond","needs","journal"].iter()
+            .map(|k| format!("{}={}", k, v.get(k).and_then(|x| x.as_array()).map(|a| a.len()).unwrap_or(0)))
+            .collect::<Vec<_>>().join(" ");
+        let all_zero = ["gives","promises","growth","bond","needs","journal"].iter()
+            .all(|k| v.get(k).and_then(|x| x.as_array()).map(|a| a.is_empty()).unwrap_or(true));
+        if all_zero {
+            tracing::info!(%session_id, turn, counts = %counts, raw_head = %raw.chars().take(800).collect::<String>(), "st event_extract bg: parsed ZERO");
+        } else {
+            tracing::info!(%session_id, turn, counts = %counts, raw_len = raw.len(), "st event_extract bg: parsed");
+        }
+    }
+    // gives → pockets apply + item journal card
+    if let Some(arr) = v.get("gives").and_then(|x| x.as_array()) {
+        for g in arr {
+            let (from_name, to_name, item) = (
+                g.get("from").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                g.get("to").or_else(|| g.get("target")).or_else(|| g.get("character")).and_then(|x| x.as_str()).unwrap_or("").trim(),
+                g.get("item").or_else(|| g.get("itemName")).or_else(|| g.get("name")).and_then(|x| x.as_str()).unwrap_or("").trim(),
+            );
+            if item.is_empty() || to_name.is_empty() { continue; }
+            let to_cid = pack_chars.iter().find(|(_, n)| n == to_name).map(|(id, _)| id.clone()).unwrap_or_default();
+            if to_cid.is_empty() { continue; }
+            let day = sess.game_clock.day;
+            let ops = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Pickup, item: item.to_string(), to: String::new(), state: String::new(), where_: String::new() }];
+            let entry = sess.pockets.entry(to_cid.clone()).or_default();
+            let mut events: Vec<kaleido_core::pockets::PocketEvent> = vec![];
+            kaleido_core::pockets::apply_pocket_ops(entry, &ops, None, day, Some(&mut events));
+            let drafts = kaleido_core::pockets::item_cards_from(&events);
+            for (it, content) in drafts {
+                let mut card = kaleido_core::journal_store::JournalCard::new(sid.clone(), to_cid.clone(), content, turn);
+                card.kind = Some("item".into());
+                card.metadata_item = Some(it);
+                card.category = "moment".into();
+                sess.journal.add_card(card, 50);
+            }
+            dirty = true;
+            let _ = from_name;
+        }
+    }
+    // promises → promise store
+    if let Some(arr) = v.get("promises").and_then(|x| x.as_array()) {
+        for pr in arr {
+            let (ch_name, text) = (
+                pr.get("character").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                pr.get("text").or_else(|| pr.get("promise")).or_else(|| pr.get("content")).and_then(|x| x.as_str()).unwrap_or("").trim(),
+            );
+            if text.is_empty() { continue; }
+            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| "narrator".into());
+            sess.promises.push(kaleido_core::promise::Promise::new(&cid, "char", text, turn));
+            dirty = true;
+        }
+    }
+    // growth → strengthen
+    tracing::info!(%session_id, turn, growth_raw = %v.get("growth").map(|x| x.to_string()).unwrap_or_default().chars().take(500).collect::<String>(), "st event_extract bg: growth raw");
+    if let Some(arr) = v.get("growth").and_then(|x| x.as_array()) {
+        for g in arr {
+            let (ch_name, ev, st) = (
+                g.get("character").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                g.get("event").or_else(|| g.get("description")).or_else(|| g.get("trigger")).or_else(|| g.get("eventText")).and_then(|x| x.as_str()).unwrap_or("").trim(),
+                g.get("strength").and_then(|x| x.as_f64()).unwrap_or(0.6) as f32,
+            );
+            if ch_name.is_empty() || ev.is_empty() { continue; }
+            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            sess.growth.strengthen(&cid, ev, st, turn);
+            dirty = true;
+        }
+    }
+    // bond → relationships + milestone plant (salience-gated)
+    tracing::info!(%session_id, turn, bond_raw = %v.get("bond").map(|x| x.to_string()).unwrap_or_default().chars().take(500).collect::<String>(), journal_raw = %v.get("journal").map(|x| x.to_string()).unwrap_or_default().chars().take(500).collect::<String>(), "st event_extract bg: bond/journal raw");
+    if let Some(arr) = v.get("bond").and_then(|x| x.as_array()) {
+        let msg_n = sess.messages.len() as i64;
+        let kick = sess.journal.salience_gate.allow(&sid, msg_n);
+        for b in arr {
+            let chg = b.get("bondDelta").or_else(|| b.get("change")).or_else(|| b.get("delta")).and_then(|x| x.as_i64()).unwrap_or(0);
+            let (ch_name, bd, td) = (
+                b.get("character").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                chg.clamp(-10, 10) as i32,
+                b.get("trustDelta").or_else(|| b.get("trustChange")).or_else(|| b.get("trust")).and_then(|x| x.as_i64()).unwrap_or_else(|| if chg != 0 { chg * 6 / 10 } else { 0 }).clamp(-10, 10) as i32,
+            );
+            if ch_name.is_empty() || (bd == 0 && td == 0) { continue; }
+            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let entry = sess.relationships.entry(cid.clone()).or_default();
+            let (bc, tc) = entry.apply_delta(bd, td);
+            if let Some(tier) = bc {
+                if let Some(m) = kaleido_core::relationship_tiers::check_milestone(&cid, "bond", tier, turn, &sess.milestones) {
+                    let lb = m.label.clone();
+                    sess.milestones.push(m);
+                    if kick { sess.journal.plant_milestone(&sid, &cid, format!("Bond deepened to {} ({})", lb, name_of(&cid)), "bond", tier > 0, turn); }
+                }
+            }
+            if let Some(tier) = tc {
+                if let Some(m) = kaleido_core::relationship_tiers::check_milestone(&cid, "trust", tier, turn, &sess.milestones) {
+                    let lb = m.label.clone();
+                    sess.milestones.push(m);
+                    if kick { sess.journal.plant_milestone(&sid, &cid, format!("Trust rose to {} ({})", lb, name_of(&cid)), "trust", tier > 0, turn); }
+                }
+            }
+            dirty = true;
+        }
+    }
+    // needs → apply_scene_impact (single-need map)
+    if let Some(arr) = v.get("needs").and_then(|x| x.as_array()) {
+        for n in arr {
+            let (ch_name, need, delta) = (
+                n.get("character").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                n.get("need").or_else(|| n.get("needKey")).or_else(|| n.get("key")).and_then(|x| x.as_str()).unwrap_or("").trim(),
+                n.get("delta").or_else(|| n.get("change")).or_else(|| n.get("value")).and_then(|x| x.as_i64()).unwrap_or(0).clamp(-30, 30) as i32,
+            );
+            if ch_name.is_empty() || need.is_empty() || delta == 0 { continue; }
+            if !kaleido_core::needs::NEED_KEYS.contains(&need) { continue; }
+            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let entry = sess.needs.entry(cid).or_insert_with(kaleido_core::needs::Needs::default);
+            let mut d = std::collections::HashMap::new();
+            d.insert(need.to_string(), delta);
+            entry.apply_scene_impact(&d, 1);
+            dirty = true;
+        }
+    }
+    // journal → maybe_write_auto (character 缺省 → 在场首位 → focus → pack 首位)
+    let fallback_ch = present.first().and_then(|cid| pack_chars.iter().find(|(id, _)| id == cid).map(|(_, n)| n.as_str()))
+        .or_else(|| pack_chars.iter().find(|(id, _)| id == focus).map(|(_, n)| n.as_str()))
+        .or_else(|| pack_chars.first().map(|(_, n)| n.as_str()))
+        .unwrap_or("");
+    if let Some(arr) = v.get("journal").and_then(|x| x.as_array()) {
+        for j in arr {
+            let raw_ch = j.get("character").and_then(|x| x.as_str()).unwrap_or("").trim();
+            let ch_name = if raw_ch.is_empty() { fallback_ch } else { raw_ch };
+            let (content, kind) = (
+                j.get("content").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                j.get("kind").and_then(|x| x.as_str()).unwrap_or("moment").trim(),
+            );
+            if ch_name.is_empty() || content.is_empty() { continue; }
+            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            sess.journal.maybe_write_auto(&sid, &cid, content.to_string(), kind, None, turn);
+            dirty = true;
+        }
+    }
+    if !dirty { return Ok(()); }
+    // 原子 read-modify-write（update_session 持锁）：避免与 roster/记忆提取的
+    // 后保存互相覆盖。逐字段合并而非整包替换——只写本提取产出的增量。
+    let want_pockets = sess.pockets.clone();
+    let want_journal = sess.journal.cards.clone();
+    let want_promises = sess.promises.promises.clone();
+    let want_growth = sess.growth.rings.clone();
+    let want_rels = sess.relationships.clone();
+    let want_miles = sess.milestones.clone();
+    let want_needs = sess.needs.clone();
+    store.update_session(session_id, |live| {
+        for (cid, p) in want_pockets { live.pockets.insert(cid, p); }
+        for c in want_journal {
+            if !live.journal.cards.iter().any(|x| x.id == c.id) { live.journal.cards.push(c); }
+        }
+        for pr in want_promises {
+            if !live.promises.promises.iter().any(|x| x.id == pr.id) { live.promises.push(pr); }
+        }
+        for r in want_growth {
+            if !live.growth.rings.iter().any(|x| x.id == r.id) { live.growth.strengthen(&r.character, &r.trigger_event, r.strength, turn); }
+        }
+        for (cid, b) in want_rels { live.relationships.insert(cid, b); }
+        for m in want_miles {
+            if !live.milestones.iter().any(|x| x.character == m.character && x.label == m.label) { live.milestones.push(m); }
+        }
+        for (cid, n) in want_needs { live.needs.insert(cid, n); }
+        Ok(())
+    }).map_err(|e| e.to_string())?;
+    tracing::info!(%session_id, turn, "st event_extract bg: wrote events");
+    Ok(())
+}
+
+/// 小模型低 token 提取调用（max_tokens 512, temperature 0.1）。
+async fn call_llm_extract_with(appst: &kaleido_core::AppStateStore, base: Option<&str>, key: Option<&str>, model: &str, system: &str, user: &str) -> Result<String, String> {
+    let llm = appst.resolve_llm(base, key, model);
+    if llm.base_url.trim().is_empty() || llm.api_key.trim().is_empty() {
+        return Err("LLM not configured".into());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let url = format!("{}/chat/completions", llm.base_url.trim_end_matches('/'));
+    let body = serde_json::json!({
+        "model": llm.model,
+        "stream": false,
+        "temperature": 0.1,
+        "max_tokens": 512,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    });
+    let resp = client.post(&url).bearer_auth(&llm.api_key)
+        .header("content-type", "application/json").json(&body)
+        .send().await.map_err(|e| format!("extract request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("extract status {}", resp.status()));
+    }
+    let v: serde_json::Value = resp.json().await.map_err(|e| format!("extract read failed: {e}"))?;
+    v.get("choices").and_then(|c| c.get(0)).and_then(|c| c.get("message")).and_then(|m| m.get("content")).and_then(|c| c.as_str())
+        .map(|s| s.to_string()).ok_or_else(|| "extract empty".to_string())
+}
+
 async fn call_llm_nonstream(state: &AppState, system: &str, user: &str) -> Result<String, String> {
     let llm = state.app_state.resolve_llm(
         state.llm_base.as_deref(),

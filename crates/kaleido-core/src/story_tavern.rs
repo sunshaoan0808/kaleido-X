@@ -2425,6 +2425,9 @@ pub struct TavernSession {
     /// [世界书定时 吞噬 Front Porch AI lorebook_timed_effects] per-session sticky/cooldown（消息序号计）。
     #[serde(default)]
     pub timed_world_info: crate::st_world_info::TimedWorldInfo,
+    /// [全自动事件提取] 回合末后台 LLM 提取物品/承诺/成长/羁绊（默认开，小模型低 token）。
+    #[serde(default = "default_true")]
+    pub event_extract: bool,
     /// S4: 导演计划（吞噬 denova director_plan）。None = 尚未生成。仅为叙事意图，不改写 locked_beats。
     #[serde(default)]
     pub director_plan: Option<DirectorPlan>,
@@ -3753,6 +3756,7 @@ mod opening_tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -4848,6 +4852,7 @@ impl TavernSessionStore {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
         };
         if let Some(pid) = author_project_id {
             session.author_live_path = Some(format!(
@@ -5951,6 +5956,7 @@ mod tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -6188,6 +6194,7 @@ mod focus_tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             world: WorldState::default(),
             game_clock: Default::default(),
         };
@@ -6300,6 +6307,7 @@ mod worldline_tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             world: WorldState::default(),
             game_clock: Default::default(),
         }
@@ -7803,6 +7811,7 @@ mod turn_submit_guard_tests {
             preferences: Default::default(),
             presence: Default::default(),
             timed_world_info: Default::default(),
+            event_extract: true,
             director_task: None,
             world: WorldState::default(),
             game_clock: Default::default(),

@@ -772,7 +772,10 @@ async function stStageRender() {
     // pocketsEnabled 单独开关（默认开，Own switch. Does not need the Realism Engine.）
     let pocketsEnabled = true;
     try { const pe = await stStageFetch('/pockets-enabled'); pocketsEnabled = pe.pocketsEnabled !== false; } catch (_) {}
+    let evExtract = true;
+    try { const ee = await stStageFetch('/event-extract'); evExtract = ee.eventExtract !== false; } catch (_) {}
     let ph = '<div class="st-stage-acts"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="st-pockets-enabled" ' + (pocketsEnabled ? 'checked' : '') + ' /> 口袋与衣物（独立开关，提示词注入）</label><span style="margin-left:8px;font-size:11px;color:var(--text-dim,#8b93a7)">关时仅隐藏提示词注入，数据保留</span></div>';
+    ph += '<div class="st-stage-acts"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="st-event-extract" ' + (evExtract ? 'checked' : '') + ' /> ⚡ 全自动事件提取（回合末后台 LLM 写口袋/承诺/成长/羁绊）</label></div>';
     if (!pids.length) {
       ph += '<div class="st-stage-empty">暂无口袋记录 —— 角色获得/穿戴物品后此处展示</div>';
     } else {
@@ -967,6 +970,19 @@ async function stStageRender() {
     } catch(e){ out += '<div class="st-stage-err">承诺读取失败：' + (e.message||e) + '</div>'; }
   } catch (e) { out += stStageSec('🎲 / 🏅 / 🎯 / 💤 P4', '', '<div class="st-stage-err">读取失败：' + (e.message || e) + '</div>'); }
   body.innerHTML = out;
+  // event_extract toggle
+  (function () {
+    const eb = document.getElementById('st-event-extract');
+    if (eb) eb.onchange = async function () {
+      const v = eb.checked;
+      eb.disabled = true;
+      try {
+        await stApi('/sessions/' + encodeURIComponent(tavernSession.sessionId) + '/event-extract', { method: 'PUT', body: JSON.stringify({ eventExtract: v }) });
+        stStatus(v ? '全自动事件提取已开启' : '全自动事件提取已关闭');
+        await stStageRender();
+      } catch (e) { stStatus('切换失败：' + (e.message || e)); eb.checked = !v; } finally { eb.disabled = false; }
+    };
+  })();
   // pockets_enabled toggle (must wire after innerHTML — element lives inside out)
   (function () {
     const cb = document.getElementById('st-pockets-enabled');
