@@ -11895,6 +11895,17 @@ fn remerge_bg_fields(store: &kaleido_core::TavernSessionStore, sess: &mut kaleid
     for (cid, n) in fresh.needs { sess.needs.entry(cid).or_insert(n); }
 }
 
+/// 角色名→会话 key 归一：pack id 优先；已有 key（名或 id 任一命中）复用，防编外角色双 key 分裂；
+/// 都没有则回退名本身。
+fn resolve_cid(pack_chars: &[(String, String)], existing: impl Fn(&str) -> bool, name: &str) -> String {
+    if let Some((id, _)) = pack_chars.iter().find(|(_, n)| n == name) { return id.clone(); }
+    if existing(name) { return name.to_string(); }
+    for (id, n) in pack_chars {
+        if existing(id) && (n == name || id == name) { return id.clone(); }
+    }
+    name.to_string()
+}
+
 /// [全自动事件提取] 回合末后台 LLM：从玩家消息+本回合正文提取结构化事件，直写存储。
 /// 小模型低 token（max_tokens 512, temperature 0.1）：只做提取不做创作。
 /// 返回 JSON：{gives:[{from,to,item}], promises:[{character,text}], growth:[{character,event,strength}],
@@ -11966,9 +11977,10 @@ async fn run_event_extract(
                 }
                 dirty = true;
             } else {
-                let to_cid = pack_chars.iter().find(|(_, n)| n == to_name).map(|(id, _)| id.clone()).unwrap_or_else(|| to_name.into());
+                let to_cid = resolve_cid(pack_chars, |k| sess.pockets.contains_key(k), to_name);
                 let from_cid = if from_name.is_empty() { "narrator".to_string() }
-                    else { pack_chars.iter().find(|(_, n)| n == from_name).map(|(id, _)| id.clone()).unwrap_or_else(|| if from_name.contains("玩家") || from_name.to_lowercase().contains("player") { "narrator".into() } else { from_name.into() }) };
+                    else if from_name.contains("玩家") || from_name.to_lowercase().contains("player") { "narrator".into() }
+                    else { resolve_cid(pack_chars, |k| sess.pockets.contains_key(k), from_name) };
                 // 先从 from 扣（Give 会清掉 from 持有的同名物），再给 to 加
                 let ops = vec![kaleido_core::pockets::PocketOpReport { kind: kaleido_core::pockets::PocketOpKind::Give, item: item.to_string(), to: to_cid.clone(), state: String::new(), where_: String::new() }];
                 let mut moved: Vec<(String, kaleido_core::pockets::PocketItem)> = vec![];
@@ -12011,7 +12023,7 @@ async fn run_event_extract(
                 pr.get("text").or_else(|| pr.get("promise")).or_else(|| pr.get("content")).and_then(|x| x.as_str()).unwrap_or("").trim(),
             );
             if text.is_empty() { continue; }
-            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| "narrator".into());
+            let cid = if ch_name.is_empty() { "narrator".into() } else { resolve_cid(pack_chars, |k| sess.promises.promises.iter().any(|x| x.character == k), ch_name) };
             sess.promises.push(kaleido_core::promise::Promise::new(&cid, "char", text, turn));
             dirty = true;
         }
@@ -12026,7 +12038,7 @@ async fn run_event_extract(
                 g.get("strength").and_then(|x| x.as_f64()).unwrap_or(0.6) as f32,
             );
             if ch_name.is_empty() || ev.is_empty() { continue; }
-            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let cid = resolve_cid(pack_chars, |k| sess.growth.rings.iter().any(|r| r.character == k), ch_name);
             sess.growth.strengthen(&cid, ev, st, turn);
             dirty = true;
         }
@@ -12044,7 +12056,7 @@ async fn run_event_extract(
                 b.get("trustDelta").or_else(|| b.get("trustChange")).or_else(|| b.get("trust")).and_then(|x| x.as_i64()).unwrap_or_else(|| if chg != 0 { chg * 6 / 10 } else { 0 }).clamp(-10, 10) as i32,
             );
             if ch_name.is_empty() || (bd == 0 && td == 0) { continue; }
-            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let cid = resolve_cid(pack_chars, |k| sess.relationships.contains_key(k), ch_name);
             let entry = sess.relationships.entry(cid.clone()).or_default();
             let (bc, tc) = entry.apply_delta(bd, td);
             if let Some(tier) = bc {
@@ -12074,7 +12086,7 @@ async fn run_event_extract(
             );
             if ch_name.is_empty() || need.is_empty() || delta == 0 { continue; }
             if !kaleido_core::needs::NEED_KEYS.contains(&need) { continue; }
-            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let cid = resolve_cid(pack_chars, |k| sess.needs.contains_key(k), ch_name);
             let entry = sess.needs.entry(cid).or_insert_with(kaleido_core::needs::Needs::default);
             let mut d = std::collections::HashMap::new();
             d.insert(need.to_string(), delta);
@@ -12096,7 +12108,7 @@ async fn run_event_extract(
                 j.get("kind").and_then(|x| x.as_str()).unwrap_or("moment").trim(),
             );
             if ch_name.is_empty() || content.is_empty() { continue; }
-            let cid = pack_chars.iter().find(|(_, n)| n == ch_name).map(|(id, _)| id.clone()).unwrap_or_else(|| ch_name.into());
+            let cid = resolve_cid(pack_chars, |k| sess.journal.cards.iter().any(|c| c.character_id == k), ch_name);
             sess.journal.maybe_write_auto(&sid, &cid, content.to_string(), kind, None, turn);
             dirty = true;
         }
