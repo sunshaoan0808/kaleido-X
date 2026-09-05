@@ -726,6 +726,18 @@ async function stStageRender() {
     const as = await stStageFetch('/actor-states');
     const ast = as.actorStates || as;
     stStageLastActorStates = ast;
+    // [自动罗盘] 导演台罗盘行（compass 随 actor-states 返回）
+    try {
+      const cp = ast.compass || {};
+      const ai = (cp.authorIntent || '').trim();
+      const cf = (cp.currentFocus || '').trim();
+      if (ai || cf) {
+        let rh = '';
+        if (ai) rh += '<span>【全书承诺】' + stStageVal(ai) + '</span>';
+        if (cf) rh += '<span>【近期目标】' + stStageVal(cf) + '</span>';
+        out += stStageSec('🧭 罗盘', '自动', rh);
+      }
+    } catch (_) {}
     const actorsMap = ast.actors || {};
     const actors = (typeof actorsMap === 'object' && !Array.isArray(actorsMap))
       ? Object.keys(actorsMap).map(function (k) {

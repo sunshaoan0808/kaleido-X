@@ -4793,6 +4793,12 @@ impl TavernSessionStore {
                 let mut sys = pack.actor_state_config.to_system();
                 if let Some(c) = compass_auto {
                     sys.mount_compass(c);
+                } else {
+                    // [自动罗盘] 无手写罗盘 → 首章目标派生 current_focus（作者可 PUT 覆盖）
+                    let focus = crate::tavern_engine::derive_focus_from_pack(&pack, pack.first_chapter_id().as_deref());
+                    if !focus.is_empty() {
+                        sys.mount_compass(crate::st_compass::Compass::new("", focus));
+                    }
                 }
                 sys
             },
@@ -5813,7 +5819,7 @@ mod tests {
         // 落盘后 reload 仍挂载（持久化正确）
         let loaded = sessions.get(&sess.session_id).unwrap();
         assert!(!loaded.actor_states.compass().is_empty());
-        // 3) 不带 work_id → 不自动挂载（保持空罗盘，现状不变）
+        // 3) 不带 work_id → 无手写罗盘 → 自动派生首章目标（自动罗盘行为）
         let sess2 = sessions
             .create_from_pack(
                 &packs,
@@ -5834,7 +5840,10 @@ mod tests {
                 },
             )
             .unwrap();
-        assert!(sess2.actor_states.compass().is_empty());
+        // 自动罗盘：current_focus 派生自首章 goals（若 pack 首章无 goals 则仍空）
+        let cf = sess2.actor_states.compass().current_focus.clone();
+        assert!(sess2.actor_states.compass().author_intent.is_empty(), "author_intent 保持空（不编造承诺）");
+        let _ = cf;
     }
 
     #[test]

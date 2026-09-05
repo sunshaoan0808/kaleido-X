@@ -10,6 +10,7 @@ use crate::{
     memory_weaver::{build_rp_summary_user_text, serialize_for_summary, RP_SUMMARY_SYSTEM_PROMPT}, EngineTag, MemoryL2Event, StoryPack,
     TavernSession,
 };
+use crate::st_compass::Compass;
 
 /// Result of a memory + node advance extraction run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,6 +96,33 @@ pub fn is_mainline_exhausted(pack: &StoryPack, session: &TavernSession) -> bool 
     !node.exit.iter().any(|e| !e.next.trim().is_empty() && e.next != node.id)
 }
 
+/// [自动罗盘] 从 pack 章节目标派生 current_focus（近期目标）。
+/// 手动罗盘（非空 author_intent/current_focus）优先，不覆盖作者手写。
+/// 返回派生文本（空 = 无目标可派生）。
+pub fn derive_focus_from_pack(pack: &StoryPack, chapter_id: Option<&str>) -> String {
+    let ch = match chapter_id.and_then(|cid| pack.chapters.iter().find(|c| c.id == cid))
+        .or_else(|| pack.chapters.iter().min_by_key(|c| c.order)) {
+        Some(c) => c,
+        None => return String::new(),
+    };
+    let goals: Vec<String> = ch.goals.iter().map(|g| g.trim().to_string()).filter(|g| !g.is_empty()).collect();
+    if goals.is_empty() { return String::new(); }
+    format!("{}：{}", ch.title.trim(), goals.join("；"))
+}
+
+/// 章节推进时刷新自动罗盘：current_focus 跟随新章节目标；author_intent 不动；
+/// 若作者手写过 current_focus（含“【手写】”标记则不动——此处用非空即手写口径）。
+pub fn refresh_auto_focus(session: &mut TavernSession, pack: &StoryPack) {
+    // 手写优先：current_focus 非空视为作者意图，不覆盖
+    if !session.actor_states.compass().current_focus.trim().is_empty() { return; }
+    let focus = derive_focus_from_pack(pack, session.chapter_cursor.as_deref());
+    if focus.is_empty() { return; }
+    session.actor_states.mount_compass(Compass::new(
+        session.actor_states.compass().author_intent.clone(),
+        focus,
+    ));
+}
+
 pub fn try_advance_node(
     pack: &StoryPack,
     session: &mut TavernSession,
@@ -134,6 +162,8 @@ pub fn try_advance_node(
                 if next_node.chapter_id != current_node.chapter_id {
                     extraction.advance_to_chapter_id = Some(next_node.chapter_id.clone());
                     session.chapter_cursor = Some(next_node.chapter_id.clone());
+                    // [自动罗盘] 跨章刷新 current_focus（手写不覆盖）
+                    refresh_auto_focus(session, pack);
                 }
             }
             return;
@@ -174,6 +204,8 @@ pub fn try_advance_node(
             if next_node.chapter_id != current_node.chapter_id {
                 extraction.advance_to_chapter_id = Some(next_node.chapter_id.clone());
                 session.chapter_cursor = Some(next_node.chapter_id.clone());
+                    // [自动罗盘] 跨章刷新 current_focus（手写不覆盖）
+                    refresh_auto_focus(session, pack);
             }
         }
     }
@@ -198,6 +230,8 @@ fn try_advance_chapter(
                 extraction.advance_to_node_id = Some(first_node.clone());
                 extraction.advance_to_chapter_id = Some(next_ch.id.clone());
                 session.chapter_cursor = Some(next_ch.id.clone());
+                // [自动罗盘] 跨章刷新 current_focus（手写不覆盖）
+                refresh_auto_focus(session, pack);
                 session.node_id = Some(first_node.clone());
             }
         }
