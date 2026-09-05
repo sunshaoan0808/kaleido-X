@@ -189,6 +189,18 @@ Flutter 本地优先角色扮演应用（Realism Engine 活人感引擎 + The St
 
 ---
 
+### 15. humanizer-zh — [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh)（MIT）
+
+Claude Code Skill（484 行规则文档，零代码；上游 `blader/humanizer` + `hardikpandya/stop-slop` + 维基 `Signs of AI writing`）。H1-H6 吞噬（2026-09-05）：24 类 AI 痕迹转写为中文确定性检测 + 5 维 50 分制评分。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 24 类去 AI 味模式（AI 词/否定排比/三段式/破折号/填充/协作痕迹等） | `SKILL.md` 核心规则速查 | `humanize.rs` 词表 + 结构检测 + `analyze` |
+| 5 维质量评分（直接性/节奏/信任度/真实性/精炼度 50 分制） | `SKILL.md` 质量评分 | `HumanizeReport` 确定性打分 + `grade` |
+| 处理流程/检查清单 | `SKILL.md` 快速检查清单 | H4 提示词硬约束 + H6 审稿 blocker + H5 破折号硬修 |
+
+---
+
 ## 一·五、评估过但未落地代码的候选（避免遗漏争议）
 
 以下项目经代码级评估（功能交叉对比、吞噬候选清单），**未产生代码级吸收**（仓库中无引用），仅调研/评估过，特此声明：
@@ -228,6 +240,7 @@ Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方�
 - 叙界 — 本地姊妹项目 kaleido-xujie（生成后多维守卫/情绪枚举/立绘渲染）
 - Legado（阅读）— https://github.com/gedoor/legado（Big5/GB18030 编码识别/目录切分）
 - Front Porch AI — https://github.com/linux4life1/front-porch-AI（AGPL-3.0，思路重实现：口袋/Needs/Journal/羁绊/事件提取等活人感系统）
+- humanizer-zh — https://github.com/op7418/humanizer-zh（MIT：24 类去 AI 味模式 + 5 维评分，转写为 Rust 确定性检测）
 - OpenHanako（HanaAgent）— https://github.com/liliMozi/openhanako（记忆输出契约/修复循环/省略统计）
 
 UI/交互设计参考：Agnai、Omate、RisuAI、SillyTavern 及其生态。
