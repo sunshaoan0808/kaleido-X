@@ -170,6 +170,25 @@ TS/Electron 桌面 AI Agent（589K 行，记忆/工具/沙盒/插件体系）。
 
 ---
 
+### 14. Front Porch AI — [linux4life1/front-porch-AI](https://github.com/linux4life1/front-porch-AI)（AGPL-3.0，重实现未搬代码）
+
+Flutter 本地优先角色扮演应用（Realism Engine 活人感引擎 + The Stoop 社区角色站）。P1→收口 + 全自动事件提取吞噬（2026-09-02→09-05）。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 口袋/衣物/暂存堆 | `pockets.dart` 889行 | `pockets.rs` 732行 + 会话/播种/提示词/API/导演台 + À la carte 独立开关 |
+| Needs 六维 + 灾变 | `needs_simulation.dart` 692行 | `needs.rs` + auto-tick 衰减 + 提示词联动 |
+| Journal 物理/存量/召回 | `journal_physics/store/injection` | `journal_physics.rs` + `journal_store.rs`（heat/冷卡召回/物品卡） |
+| 成长年轮 + 物理阈值 | `growth_service` | `character_arc.rs` GrowthRing/GrowthStore + tier/注入选择 |
+| 世界气候 | `world.dart` atmosphere/gravity | `world_climate.rs` + 提示词守卫 |
+| Chaos/Chance Time | `chaos_mode_service` | `chaos.rs` + auto-tick 压力 |
+| 羁绊/里程碑/目标/夜梦 | `relationship/objective/dream` | `relationship.rs` + `objectives.rs` + `dreams.rs` + 承诺债务 `promise.rs` |
+| 心情基线/在场/场景渐隐/偏好 | `mood_baseline/presence/scenario/preference` | `mood_presence.rs` + prompt 加权 |
+| 定时效应 sticky/cooldown | `lorebook_timed_effects` | `st_world_info.rs` 酒馆链路 + pill |
+| 全自动事件提取 | （自研，Front Porch 无对应） | 回合末后台 LLM 直写 + remerge/CAS + resolve_cid |
+
+---
+
 ## 一·五、评估过但未落地代码的候选（避免遗漏争议）
 
 以下项目经代码级评估（功能交叉对比、吞噬候选清单），**未产生代码级吸收**（仓库中无引用），仅调研/评估过，特此声明：
@@ -208,6 +227,7 @@ Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方�
 - Openwrite — https://github.com/LiPu-jpg/Openwrite（长文本语义切块/图像消费）
 - 叙界 — 本地姊妹项目 kaleido-xujie（生成后多维守卫/情绪枚举/立绘渲染）
 - Legado（阅读）— https://github.com/gedoor/legado（Big5/GB18030 编码识别/目录切分）
+- Front Porch AI — https://github.com/linux4life1/front-porch-AI（AGPL-3.0，思路重实现：口袋/Needs/Journal/羁绊/事件提取等活人感系统）
 - OpenHanako（HanaAgent）— https://github.com/liliMozi/openhanako（记忆输出契约/修复循环/省略统计）
 
 UI/交互设计参考：Agnai、Omate、RisuAI、SillyTavern 及其生态。

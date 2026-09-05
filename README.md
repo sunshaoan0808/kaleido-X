@@ -17,6 +17,16 @@ refinements to its own prompts and memory.
   anchoring, apply/rollback, and audit history.
 - **Embeddings** — semantic search (inline fastembed, or a sidecar proxy).
 - **Book export** — EPUB and PDF generation (native, no external binaries).
+- **Living characters** — pockets & wardrobe, six-dimension needs with decay
+  and catastrophe, bond/trust dynamics, growth rings, promises with
+  accountability, mood baseline, presence derivation
+  ([Front Porch AI](https://github.com/linux4life1/front-porch-AI)-inspired,
+  reimplemented — see [`docs/ATTRIBUTIONS.md`](docs/ATTRIBUTIONS.md#14-front-porch-ai--linux4life1front-porch-aiagpl-30重实现未搬代码)).
+- **Auto event extraction** — end-of-turn background LLM writes pocket ops,
+  promises, growth, bond, and journal cards automatically (toggleable per
+  session, small model, fail-open).
+- **Worldbook timed effects** — sticky/cooldown lore entries wired into the
+  Tavern prompt pipeline with director-console pills.
 
 ## Layout
 
