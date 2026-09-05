@@ -5439,6 +5439,8 @@ fn guard_narrative(
     if let Some(roster) = roster_names {
         for name in roster {
             let n = name.trim();
+            // [守卫降噪] 玩家 vessel 不是原著外对象
+            if n == "玩家" { continue; }
             if n.chars().count() >= 2 && !known_names.contains(n) && !chapter_body.contains(n) {
                 violations.push(GuardViolation {
                     severity: GuardSeverity::High,
@@ -5464,6 +5466,8 @@ fn guard_narrative(
                         // (1) 含 '的' → 形容词/所属结构，中文人名几乎不含此字;
                         // (2) known 角色名前缀 → 角色延伸（沈棠的伞/林晚的），非外角色
                         let known_prefix = known_names.iter().any(|k| !k.is_empty() && p.starts_with(k.as_str()));
+                        // [守卫降噪] 玩家 vessel 跳过
+                        if p == "玩家" { continue; }
                         if p.chars().count() >= 2
                             && !p.contains('的')
                             && !known_prefix
@@ -5491,6 +5495,16 @@ fn guard_narrative(
             continue;
         }
         let hit = kws.iter().any(|k| full_ngrams.contains(k));
+        // [守卫降噪] 抽象节拍兜底：kws 全未命中时，若 beat 的核心实词（去功能字单字）
+        // 在正文/状态出现 ≥3 次，算体现（如“信”出现 5 次但无“抹除”二字）
+        let hit = hit || {
+            let core: Vec<char> = beat.chars().filter(|c| ('\u{4e00}'..='\u{9fff}').contains(c) && !is_functional_char(*c)).collect();
+            core.iter().any(|c| {
+                let s: String = [*c].iter().collect();
+                full_ngrams.iter().any(|g| g.contains(&s[..]))
+                    && full_ngrams.iter().filter(|g| g.contains(&s[..])).count() >= 2
+            })
+        };
         if !hit {
             violations.push(GuardViolation {
                 severity: GuardSeverity::High,
@@ -5512,6 +5526,11 @@ fn guard_narrative(
             });
         }
     }
+    // [守卫降噪] 自由 pack 常无章节目标：空 goals 直接跳过，不告空气
+    if chapter_goals.is_empty() {
+        return violations;
+    }
+    // NOTE: 双持检测在调用方做（需 sess.pockets），见下方 guard_text 块后。
     for goal in chapter_goals {
         let kws = guard_keywords(goal);
         if kws.is_empty() {
@@ -9157,6 +9176,17 @@ async fn start_turn(
                             let mut s = std::collections::HashSet::new();
                             for c in &pack.characters {
                                 s.insert(c.name.clone());
+                                s.insert(c.id.clone());
+                            }
+                            // [守卫降噪] 已登场人物不再是“原著外对象”（自由剧情无原著）
+                            for k in sess.pockets.keys().chain(sess.relationships.keys()) {
+                                s.insert(k.clone());
+                            }
+                            for c in sess.journal.cards.iter().map(|c| c.character_id.clone()) {
+                                s.insert(c);
+                            }
+                            for r in sess.growth.rings.iter().map(|r| r.character.clone()) {
+                                s.insert(r);
                             }
                             for l in &pack.lore_entries {
                                 if let Some(kw) = l.get("keywords").and_then(|k| k.as_array()) {
@@ -9204,15 +9234,53 @@ async fn start_turn(
                                     .unwrap_or_default()
                             })
                             .unwrap_or_default();
-                        guard_narrative(
-                            &full_text,
+                        // [守卫降噪] 状态体现：口袋物品/Journal 卡内容并入检测文本
+                        // （信在口袋里躺着也算“体现”，自由剧情常用物传情）
+                        let guard_text = {
+                            let mut g = full_text.clone();
+                            for (cid, pk) in &sess.pockets {
+                                for it in pk.carrying.iter().chain(pk.worn.iter()) {
+                                    // [守卫降噪] 纯中文持有行（拉丁 id 会污染 n-gram，如 narrator→or信）
+                                    g.push_str(&format!("\n持有{}。", it.name));
+                                }
+                            }
+                            for c in sess.journal.cards.iter().take(20) {
+                                let snip: String = c.content.chars().take(50).collect();
+                                g.push_str(&format!("\n[记:{}]", snip));
+                            }
+                            g
+                        };
+                        let mut vs = guard_narrative(
+                            &guard_text,
                             &chapter_body,
                             &known,
                             &present_names,
                             &locked_beats,
                             &chapter_goals,
                             roster_names.as_deref(),
-                        )
+                        );
+                        // [双持检测] 同一物品在两个角色口袋 = 吃书（turn 17 银锁双持实踩）
+                        {
+                            let mut seen: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                            for (cid, pk) in &sess.pockets {
+                                for it in pk.carrying.iter().chain(pk.worn.iter()) {
+                                    let k = it.name.trim().to_lowercase();
+                                    if k.is_empty() { continue; }
+                                    if let Some(prev) = seen.get(&k) {
+                                        if prev != cid {
+                                            vs.push(GuardViolation {
+                                                severity: GuardSeverity::High,
+                                                dim: "物品",
+                                                msg: format!("双持吃书「{}」同时在 {} 与 {} 口袋", it.name, prev, cid),
+                                            });
+                                        }
+                                    } else {
+                                        seen.insert(k, cid.clone());
+                                    }
+                                }
+                            }
+                        }
+                        vs
                     };
                     // P2-2 冲突处理：high 打回（阻止跳章推进，留在当前节点）；记录 guard_events 供排查/展示
                     // 2026-08-14：打回仅在 Canon（剧情推进/跳章）语义下生效——说话/行为模式记录不阻断（无跳章可阻）
