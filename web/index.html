@@ -10,7 +10,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="./manifest.json" />
   <title>万象 Kaleido · 沉浸叙事工作台</title>
-<link rel="stylesheet" href="./assets/styles.css?v=1787805173" />
+<link rel="stylesheet" href="./assets/styles.css?v=1788518732" />
   <script>
     (function () {
       try { localStorage.removeItem('kaleido.uiMode'); } catch (e) {}
@@ -52,8 +52,8 @@
       function fontStack(a) {
         const family = (a && a.fontFamily) || 'system';
         const custom = (a && a.customFontCss) || '';
-        const system = '"WenQuanYi Zen Hei", "Droid Sans Fallback", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif';
-        const map = { system: system, serif: '"WenQuanYi Zen Hei", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", ui-serif, Georgia, serif', mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' };
+        const system = '"Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Zen Hei", "Droid Sans Fallback", system-ui, -apple-system, "Segoe UI", sans-serif';
+        const map = { system: system, serif: '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", ui-serif, Georgia, "WenQuanYi Zen Hei", serif', mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' };
         if (family === 'custom' && custom.trim()) return custom;
         return (map[family] || system) + (custom.trim() ? ', ' + custom : '');
       }
@@ -148,30 +148,22 @@
         </div>
       </header>
 
-      <!-- Mobile bottom nav: 首页 · 故事馆 · 档案馆 · 对话 · 角色 · 更多 -->
+      <!-- Mobile bottom nav: 首页 · 档案馆 · 对话 · 更多 -->
       <nav class="bottom-nav mobile-only" id="bottom-nav" aria-label="主导航">
         <button type="button" class="bnav" data-tab="home">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
           <span class="bnav-lab">首页</span>
         </button>
-        <button type="button" class="bnav" data-tab="tavern">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
-          <span class="bnav-lab">故事馆</span>
-        </button>
         <button type="button" class="bnav" data-tab="packs">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg></span>
+          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg></span>
           <span class="bnav-lab">档案馆</span>
         </button>
         <button type="button" class="bnav" data-tab="chat">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
           <span class="bnav-lab">对话</span>
         </button>
-        <button type="button" class="bnav" data-tab="bond">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg></span>
-          <span class="bnav-lab">角色</span>
-        </button>
         <button type="button" class="bnav" data-mnav="tools">
-          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span>
+          <span class="bnav-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></span>
           <span class="bnav-lab">更多</span>
         </button>
       </nav>
@@ -183,10 +175,11 @@
           <div class="sheet-handle"></div>
           <div class="sheet-head">
             <strong>更多</strong>
-            <button type="button" class="ghost sm" id="tools-sheet-close">关闭</button>
+            <button type="button" class="ghost sm modal-close" id="tools-sheet-close" aria-label="关闭">✕</button>
           </div>
           <div class="sheet-grid">
             <div class="sheet-section-title">叙事延伸</div>
+            <button type="button" class="sheet-item tab" data-tab="tavern"><span>故事馆</span><small>四玩法叙事舞台 · 剧本</small></button>
             <button type="button" class="sheet-item tab" data-tab="adventure"><span>冒险</span><small>快速开局一场跑团</small></button>
             <button type="button" class="sheet-item tab" data-tab="story"><span>跑团列表</span><small>完整冒险会话</small></button>
             <button type="button" class="sheet-item tab" data-tab="bookshelf"><span>书架</span><small>导入 TXT/DOCX · 阅读 · 进故事馆</small></button>
@@ -196,7 +189,9 @@
             </button>
 
             <div class="sheet-section-title">创作与导入</div>
+            <button type="button" class="sheet-item tab" data-tab="bond"><span>角色</span><small>选角与记忆 · 世界书管理</small></button>
             <button type="button" class="sheet-item tab" data-tab="partner"><span>角色/世界书</span><small>高级编辑（卡片与条目）</small></button>
+            <button type="button" class="sheet-item tab" data-tab="st" data-focus="realm"><span>角色卡市场</span><small>RisuRealm 万卡浏览 · 一键导入</small></button>
             <button type="button" class="sheet-item tab" data-tab="st"><span>角色卡导入</span><small>SillyTavern JSON/PNG</small></button>
             <button type="button" class="sheet-item tab" data-tab="background"><span>世界/角色生成</span><small>多阶段生成</small></button>
             <button type="button" class="sheet-item tab" data-tab="booktravel"><span>书籍漫游</span><small>改写与情节节拍</small></button>
@@ -214,7 +209,7 @@
             <div class="sheet-section-title">系统</div>
             <button type="button" class="sheet-item tab mobile-only" data-tab="works"><span>作者区</span><small>写作与工程（桌面在顶栏）</small></button>
             <button type="button" class="sheet-item tab" data-tab="aiadmin"><span>AI 供应商</span><small>多模型端点与用量</small></button>
-            <button type="button" class="sheet-item tab" data-tab="moa"><span>模型对比</span><small>同一 prompt 并发多模型</small></button>
+            <button type="button" class="sheet-item tab" data-tab="moa"><span>模型对比</span><small>同一提示词并发多模型</small></button>
             <button type="button" class="sheet-item tab" data-tab="settings"><span>设置</span><small>LLM、外观与多端同步</small></button>
           </div>
         </div>
@@ -226,7 +221,7 @@
         <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="会话列表">
           <div class="drawer-head">
             <strong>会话</strong>
-            <button type="button" class="ghost sm" id="session-drawer-close">关闭</button>
+            <button type="button" class="ghost sm modal-close" id="session-drawer-close" aria-label="关闭">✕</button>
           </div>
           <div id="session-drawer-recall" class="drawer-recall hidden">
             <div class="drawer-recall-head"><strong>语义记忆</strong><span id="session-drawer-recall-meta" class="muted sm"></span></div>
@@ -305,6 +300,24 @@
             <label class="inline">角色卡
               <select id="chat-cc"></select>
             </label>
+            <label class="inline">关系
+              <select id="chat-relation">
+                <option value="">（不设定）</option>
+                <option value="stranger">陌生人</option>
+                <option value="friend">朋友</option>
+                <option value="rival">对手</option>
+                <option value="mentor">师徒</option>
+                <option value="family">家人</option>
+                <option value="lover">恋人</option>
+                <option value="custom">自定义…</option>
+              </select>
+            </label>
+            <label class="inline" id="chat-relation-custom-wrap" style="display:none">
+              <input id="chat-relation-custom" type="text" placeholder="描述你和角色的关系…" maxlength="80">
+            </label>
+            <label class="inline">ST 预设
+              <select id="chat-preset"><option value="">（默认模式）</option></select>
+            </label>
             <button type="button" id="chat-start" class="chat-start-btn">开始对话</button>
             <span id="partner-hint" class="muted sm"></span>
           </div>
@@ -329,6 +342,18 @@
               </label>
               <label class="inline">角色卡
                 <select id="chat-cc2"></select>
+              </label>
+              <label class="inline">关系
+                <select id="chat-relation2">
+                  <option value="">（不设定）</option>
+                  <option value="stranger">陌生人</option>
+                  <option value="friend">朋友</option>
+                  <option value="rival">对手</option>
+                  <option value="mentor">师徒</option>
+                  <option value="family">家人</option>
+                  <option value="lover">恋人</option>
+                  <option value="custom">自定义…</option>
+                </select>
               </label>
               <button type="button" id="apply-partner" class="ghost sm">应用选中</button>
               <span id="partner-hint2" class="muted sm"></span>
@@ -602,9 +627,9 @@
                               <p id="works-cwd" class="muted sm works-cwd">/</p>
                               <div id="works-tree" class="item-list works-tree" data-empty="暂无文稿，可新建目录或文件"></div>
                               <div class="works-actions">
-                                <label>新目录 <input id="works-new-dir" placeholder="notes/chapter1" /></label>
+                                <label>新目录 <input id="works-new-dir" placeholder="草稿/第一卷" /></label>
                                 <button type="button" id="works-mkdir" class="ghost sm">创建目录</button>
-                                <label>新文件 <input id="works-new-file" placeholder="notes/draft.md" /></label>
+                                <label>新文件 <input id="works-new-file" placeholder="草稿/第1章.md" /></label>
                                 <button type="button" id="works-newfile" class="ghost sm">创建空文件</button>
                               </div>
                               <p id="works-tree-msg" class="muted sm"></p>
@@ -624,10 +649,10 @@
                                   <button type="button" id="works-delete" class="ghost sm danger" disabled>删除</button>
                                   <span class="az-desk-sep" aria-hidden="true"></span>
                                   <select id="az-publish-kind" class="az-select sm" title="发布类型" disabled>
-                                    <option value="lore">设定 lore</option>
-                                    <option value="chapter">章节 chapter</option>
+                                    <option value="lore" title="lore">设定</option>
+                                    <option value="chapter" title="chapter">章节</option>
                                     <option value="worldBook">世界书</option>
-                                    <option value="promoteLive">live→canon</option>
+                                    <option value="promoteLive">实时落稿→定稿</option>
                                   </select>
                                   <button type="button" id="az-publish-btn" class="sm" disabled title="发布回场景/卡包">发布</button>
                                   <button type="button" id="az-inject-btn" class="ghost sm" disabled title="注入当前绑定会话">注入</button>
@@ -674,9 +699,9 @@
                                   </div>
                                 </div>
                                 <div class="works-style-presets-body">
-                                  <label>当前应用 <input id="style-presets-applied" readonly placeholder="(none)" /></label>
+                                  <label>当前应用 <input id="style-presets-applied" readonly placeholder="（无）" /></label>
                                   <label>预设 JSON（数组或对象）
-                                    <textarea id="style-presets-editor" rows="4" placeholder='[{"id":"noir","name":"Noir","prompt":"..."}]'></textarea>
+                                    <textarea id="style-presets-editor" rows="4" placeholder='[{"id":"noir","name":"黑色幽默","prompt":"..."}]'></textarea>
                                   </label>
                                   <div id="style-presets-list" class="item-list works-style-presets-list"></div>
                                   <p id="style-presets-msg" class="muted sm"></p>
@@ -885,7 +910,7 @@
             <div id="az-view-scene-cards" class="az-view hidden">
               <div class="az-view-header">
                 <h2>场记卡</h2>
-                <p class="muted sm">每场自动生成的场景摘要快照（U3）：按作品存储于 plot.sqlite</p>
+                <p class="muted sm">每场自动生成的场景摘要快照（U3）：按项目存储于 plot.sqlite</p>
               </div>
               <div class="az-compose-body">
                 <div class="az-layout" style="grid-template-columns:minmax(0,1fr) 300px;height:100%;gap:1px;min-width:0">
@@ -901,8 +926,8 @@
                   <aside class="az-panel az-sc-side">
                     <div class="az-panel-head"><span>操作</span></div>
                     <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
-                      <button type="button" id="sc-clear" class="ghost sm" style="justify-content:center">清空当前作品场记</button>
-                      <p class="muted sm" style="margin:0">清空为不可逆操作，仅删除所选作品的场记卡。</p>
+                      <button type="button" id="sc-clear" class="ghost sm" style="justify-content:center">清空当前项目场记</button>
+                      <p class="muted sm" style="margin:0">清空为不可逆操作，仅删除所选项目的场记卡。</p>
                     </div>
                   </aside>
                 </div>
@@ -920,7 +945,7 @@
                       <span>会话</span>
                       <button type="button" id="da-new" class="ghost sm" aria-label="新建双Agent会话">新建</button>
                     </div>
-                    <label>作品 ID <input id="da-work" list="az-project-list-dl" placeholder="作品/项目 ID（必填）" autocomplete="off" /></label>
+                    <label>项目 ID <input id="da-work" list="az-project-list-dl" placeholder="项目 ID（必填）" autocomplete="off" /></label>
                     <label>标题 <input id="da-title" placeholder="可选" autocomplete="off" /></label>
                     <div id="da-list" class="az-list" style="flex:1;overflow:auto;min-height:140px"></div>
                     <p id="da-msg" class="muted sm"></p>
@@ -958,7 +983,7 @@
             <div id="az-view-foreshadow" class="az-view hidden">
               <div class="az-view-header">
                 <h2>伏笔/悬念</h2>
-                <p class="muted sm">伏笔与伏笔点管理（P2）：按作品存储于 plot.sqlite</p>
+                <p class="muted sm">伏笔与伏笔点管理（P2）：按项目存储于 plot.sqlite</p>
               </div>
               <div class="az-compose-body">
                 <div class="az-layout" style="grid-template-columns:minmax(0,1fr) 300px;height:100%;gap:1px;min-width:0">
@@ -1179,7 +1204,7 @@
 第三章 转折
 
 她把风暴玻璃放到桌上，说：跟我走。</textarea></label>
-          <label>保存路径 <span class="field-hint">作品目录下相对路径</span>
+          <label>保存路径 <span class="field-hint">项目目录下相对路径</span>
             <input id="ol-save-path" placeholder="outlines/demo-outline.md" />
           </label>
           <label class="check-inline row"><input type="checkbox" id="ol-use-llm" /> 使用 LLM 润色摘要</label>
@@ -1231,6 +1256,68 @@
           </div>
           <pre id="st-wi-out" class="preview" data-empty="预览结果将显示在这里"></pre>
           <p id="st-wi-msg-status" class="muted sm"></p>
+
+          <h3 class="settings-sub">SillyTavern 预设管理</h3>
+          <p class="muted sm">上传 ST 预设 JSON（含 prompt 宏、注入位、变量系统），在对话界面选择后自动接管消息组装。</p>
+          <div class="row">
+            <input id="st-preset-file" type="file" accept=".json" />
+            <button type="button" id="st-preset-upload" class="ghost">上传预设</button>
+            <button type="button" id="st-preset-refresh" class="ghost">刷新列表</button>
+          </div>
+          <div id="st-preset-list" class="item-list" data-empty="暂无预设，上传 JSON 开始"></div>
+          <div id="st-preset-detail" class="hidden">
+            <div class="row" style="align-items:center;justify-content:space-between">
+              <strong id="st-preset-detail-name"></strong>
+              <button type="button" id="st-preset-delete" class="danger ghost">删除</button>
+            </div>
+            <p id="st-preset-detail-meta" class="muted sm"></p>
+            <details>
+              <summary class="muted sm">块列表（点击展开）</summary>
+              <div id="st-preset-blocks" class="preset-block-list"></div>
+            </details>
+          </div>
+          <p id="st-preset-msg" class="muted sm"></p>
+
+          <h3 class="settings-sub">RisuRealm 角色卡市场</h3>
+          <p class="muted sm">浏览 RisuAI 官方角色卡市场，一键导入（自动提取角色设定 + 世界书）。</p>
+          <div class="row" style="flex-wrap:wrap">
+            <input id="realm-q" type="text" placeholder="搜索角色卡…" style="flex:1 1 180px;min-width:0" />
+            <button type="button" id="realm-search-btn" class="ghost">搜索</button>
+            <label class="inline" style="white-space:nowrap">
+              <input type="checkbox" id="realm-nsfw" style="width:auto" /> NSFW
+            </label>
+            <label class="inline" style="white-space:nowrap">
+              <input type="checkbox" id="realm-translate" style="width:auto" /> 自动翻译
+            </label>
+            <select id="realm-sort" class="sm" style="width:auto">
+              <option value="recommended">推荐</option>
+              <option value="trending">趋势</option>
+              <option value="downloads">下载量</option>
+              <option value="new">最新</option>
+              <option value="random">随机</option>
+            </select>
+          </div>
+          <div class="row" style="flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-2)">
+            <select id="realm-filter-tag" class="sm" style="width:auto;max-width:160px"><option value="">全部标签</option></select>
+            <select id="realm-filter-type" class="sm" style="width:auto">
+              <option value="">全部类型</option>
+              <option value="sfw">SFW</option>
+              <option value="nsfw">NSFW</option>
+              <option value="normal">普通</option>
+            </select>
+            <select id="realm-filter-wb" class="sm" style="width:auto">
+              <option value="">全部</option>
+              <option value="yes">含世界书/资源</option>
+              <option value="no">纯文本卡</option>
+            </select>
+          </div>
+          <div id="realm-grid" class="realm-grid" data-empty="搜索 RisuRealm 角色卡市场"></div>
+          <div class="row" style="justify-content:space-between">
+            <button type="button" id="realm-prev" class="ghost sm">‹ 上一页</button>
+            <span id="realm-page-info" class="muted sm"></span>
+            <button type="button" id="realm-next" class="ghost sm">下一页 ›</button>
+          </div>
+          <p id="realm-msg" class="muted sm"></p>
         </div>
       </div>
 
@@ -1346,11 +1433,11 @@ Use this skill for smoke tests.
       <div id="tab-stats" class="tab-panel hidden">
         <div class="settings card-wide">
           <h2>统计</h2>
-          <p class="muted">查看全局互动、创作产出与作品摘要</p>
+          <p class="muted">查看全局互动、创作产出与项目摘要</p>
           <div class="row">
             <button type="button" id="stats-interactions">互动统计</button>
             <button type="button" id="stats-writing" class="ghost">创作统计</button>
-            <button type="button" id="stats-summary" class="ghost">作品摘要</button>
+            <button type="button" id="stats-summary" class="ghost">项目摘要</button>
           </div>
           <pre id="stats-out" class="preview" data-empty="选择指标后数据将显示在这里"></pre>
           <p id="stats-msg" class="muted sm"></p>
@@ -1511,13 +1598,13 @@ Use this skill for smoke tests.
           </div>
 
           <!-- 元数据展示区 -->
-          <div id="crawl-meta-panel" class="hidden" class="mt-3">
+          <div id="crawl-meta-panel" class="hidden mt-3">
             <h3>小说信息</h3>
             <div id="crawl-meta-display" class="muted sm crawl-meta-grid"></div>
           </div>
 
           <!-- 后台进度展示区 -->
-          <div id="crawl-progress-panel" class="hidden" class="mt-3">
+          <div id="crawl-progress-panel" class="hidden mt-3">
             <h3 >⏳ 后台爬取进度</h3>
             <div id="crawl-progress-list" class="muted sm"></div>
           </div>
@@ -1574,21 +1661,6 @@ Use this skill for smoke tests.
             <button type="button" id="set-save">保存设置</button>
           </div>
           <p id="set-msg" class="muted sm" aria-live="polite"></p>
-
-          <div class="settings-section mt-4">
-            <h3 class="settings-section-title">服务运行状态 <span class="badge badge-active" id="set-metrics-badge" hidden>在线</span></h3>
-            <p class="muted sm">来自 <code>/health</code> 的作业并发水位与累计计数（P11）。峰值/运行中为本进程作用域；totals 跨重启累计。</p>
-            <div class="conn-card" id="set-metrics-card">
-              <div class="conn-card-line"><span class="conn-label">运行中 / 峰值</span><span id="set-metrics-run" class="conn-value mono">—</span></div>
-              <div class="conn-card-line"><span class="conn-label">队列</span><span id="set-metrics-queued" class="conn-value mono">—</span></div>
-              <div class="conn-card-line"><span class="conn-label">累计 创建/成功/失败/取消</span><span id="set-metrics-totals" class="conn-value mono">—</span></div>
-              <div class="conn-card-line"><span class="conn-label">进程运行时长</span><span id="set-metrics-uptime" class="conn-value mono">—</span></div>
-            </div>
-            <div class="row settings-model-row">
-              <button type="button" id="set-metrics-refresh" class="ghost">刷新状态</button>
-            </div>
-            <p id="set-metrics-msg" class="muted sm"></p>
-          </div>
 
           <div class="settings-section mt-4">
             <h3 class="settings-section-title">故事馆</h3>
@@ -1652,6 +1724,10 @@ Use this skill for smoke tests.
               <button type="button" id="set-st-import">导入主题</button>
               <button type="button" id="set-st-export" class="ghost">导出当前</button>
             </div>
+
+            <h3 class="settings-sub">我的主题</h3>
+            <p class="muted sm">已导入的主题在此一键切换或删除；切换主题会保留你当前的壁纸设置。</p>
+            <div id="set-theme-library" class="theme-library"><!-- JS 渲染主题列表 --></div>
 
             <h3 class="settings-sub">多端同步</h3>
             <p class="muted sm">外观写入 <code>/api/v1/app-state</code> 的 <code>ui.appearance</code>；本机 localStorage 仍作缓存。</p>
@@ -1918,44 +1994,68 @@ Use this skill for smoke tests.
 
           <!-- 资料抽屉：会话 + 存档（新 id，class 复用档案馆列表样式） -->
           <aside class="st-side">
-            <div class="st-side-section">
-              <div class="aside-head">
+            <div class="st-side-section st-fold">
+              <div class="aside-head st-fold-head" aria-expanded="true">
                 <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>会话</span>
                 <button type="button" id="st-drawer-new-session" class="ghost sm">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                   新建
                 </button>
+                <span class="st-fold-arrow" aria-hidden="true">▸</span>
               </div>
-              <input type="search" class="list-search" id="st-drawer-session-search" placeholder="搜索会话…" autocomplete="off" />
-              <div id="st-drawer-recall" class="drawer-recall hidden">
-                <div class="drawer-recall-head"><strong>语义记忆</strong><span id="st-drawer-recall-meta" class="muted sm"></span></div>
-                <div id="st-drawer-recall-list" class="drawer-recall-list"></div>
+              <div class="st-fold-body">
+                <input type="search" class="list-search" id="st-drawer-session-search" placeholder="搜索会话…" autocomplete="off" />
+                <div id="st-drawer-session-list" class="st-session-list" data-empty="暂无故事馆会话，点「新建」开场"></div>
               </div>
-              <div id="st-drawer-session-list" class="st-session-list" data-empty="暂无故事馆会话，点「新建」开场"></div>
             </div>
-            <div class="st-side-section st-char-section">
-              <div class="aside-head">
+            <div class="st-side-section st-fold st-fold-collapsed">
+              <div class="aside-head st-fold-head st-fold-collapsed" aria-expanded="false">
+                <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-4"><path d="M12 2a7 7 0 0 0-7 7c0 3 2 5 2 7h10c0-2 2-4 2-7a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>语义记忆</span>
+                <span class="st-fold-arrow" aria-hidden="true">▸</span>
+              </div>
+              <div class="st-fold-body" hidden>
+                <div id="st-drawer-recall" class="drawer-recall hidden">
+                  <div class="drawer-recall-head"><strong>语义记忆</strong><span id="st-drawer-recall-meta" class="muted sm"></span></div>
+                  <div id="st-drawer-recall-list" class="drawer-recall-list"></div>
+                </div>
+              </div>
+            </div>
+            <div class="st-side-section st-char-section st-fold">
+              <div class="aside-head st-fold-head">
                 <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/></svg>角色</span>
+                <span class="st-fold-arrow" aria-hidden="true">▸</span>
               </div>
-              <div id="st-char-list" class="st-char-list"></div>
+              <div class="st-fold-body">
+                <div id="st-char-list" class="st-char-list"></div>
+              </div>
             </div>
-            <div class="st-side-section">
-              <div class="aside-head">
+            <div class="st-side-section st-fold st-fold-collapsed">
+              <div class="aside-head st-fold-head st-fold-collapsed" aria-expanded="false">
                 <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-4"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>书签</span>
+                <button type="button" id="st-drawer-bm-bookmark" class="ghost sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  收藏
+                </button>
+                <span class="st-fold-arrow" aria-hidden="true">▸</span>
               </div>
-              <div id="st-bookmarks" class="st-bm-list"></div>
+              <div class="st-fold-body" hidden>
+                <div id="st-bookmarks" class="st-bm-host"></div>
+              </div>
             </div>
-            <div class="st-side-section">
-              <div class="aside-head">
+            <div class="st-side-section st-fold st-fold-collapsed">
+              <div class="aside-head st-fold-head st-fold-collapsed" aria-expanded="false">
                 <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-4"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h8"/></svg>存档</span>
                 <button type="button" id="st-drawer-save-create" class="ghost sm">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico mr-2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                   保存
                 </button>
+                <span class="st-fold-arrow" aria-hidden="true">▸</span>
               </div>
-              <div id="st-drawer-save-list" class="st-save-list"></div>
-              <div class="st-subhead"><span>世界线</span></div>
-              <div id="st-drawer-worldline" class="st-worldline"></div>
+              <div class="st-fold-body" hidden>
+                <div id="st-drawer-save-list" class="st-save-list"></div>
+                <div class="st-subhead"><span>世界线</span></div>
+                <div id="st-drawer-worldline" class="st-worldline"></div>
+              </div>
             </div>
           </aside>
 
@@ -1986,9 +2086,11 @@ Use this skill for smoke tests.
               <div class="st-recall-head">
                 <span class="st-recall-title">语义记忆</span>
                 <span id="st-recall-meta" class="muted sm">—</span>
+                <button type="button" id="st-recall-pin" class="ghost sm" title="置顶当前记忆">置顶</button>
                 <button type="button" id="st-recall-refresh" class="ghost sm" title="按最近用户句重排">重排</button>
                 <a class="ghost sm st-recall-lab" href="#/embedlab" id="st-recall-lab">实验室</a>
               </div>
+              <div id="st-recall-pinned" class="st-recall-pinned hidden"></div>
               <div id="st-recall-list" class="st-recall-list"></div>
             </div>
 
@@ -2000,7 +2102,7 @@ Use this skill for smoke tests.
                   <div id="st-continue-title" class="st-continue-title">—</div>
                   <div id="st-continue-meta" class="st-continue-meta"></div>
                 </div>
-                <span class="st-continue-cta">进入剧场 →</span>
+                <span class="st-continue-cta">进入故事馆 →</span>
               </button>
               <div id="st-entry-cards" class="st-entry-cards">
                 <button type="button" class="st-entry-card" data-playable="P1" id="st-play-p1">
@@ -2022,7 +2124,7 @@ Use this skill for smoke tests.
                   <span class="card-meta">主角 / 配角 / 路人</span>
                 </button>
                 <button type="button" class="st-entry-card" data-playable="P4" id="st-play-p4">
-                  <span class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></span>
+                  <span class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></span>
                   <strong>P4 同人</strong>
                   <small>自由世界</small>
                   <span class="card-meta">任意组合 · 开放叙事</span>
@@ -2055,7 +2157,7 @@ Use this skill for smoke tests.
                 <div id="st-options" class="st-options" aria-label="选项"></div>
                 <div id="st-panels" class="st-panels" aria-label="Agent面板"></div>
                 <div class="st-composer-row">
-                  <div class="st-composer-tools" role="group" aria-label="剧场快捷">
+                  <div class="st-composer-tools" role="group" aria-label="故事馆快捷">
                     <button type="button" id="st-wand-btn" class="ghost st-tool-btn st-wand-btn" title="更多工具（续写/生图/朗读）" aria-label="更多工具" aria-expanded="false">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h0"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
                       <span class="btn-lab">工具</span>
@@ -2064,7 +2166,7 @@ Use this skill for smoke tests.
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                       <span class="btn-lab">剧情</span>
                     </button>
-                    <div id="st-wand-menu" class="st-wand-menu hidden" role="menu" aria-label="剧场工具">
+                    <div id="st-wand-menu" class="st-wand-menu hidden" role="menu" aria-label="故事馆工具">
                       <div class="st-wand-section" data-wand="modes">
                         <div class="st-wand-label">玩法</div>
                         <div id="st-mode-toggle" class="st-mode-toggle hidden" role="group" aria-label="模式">
@@ -2183,10 +2285,10 @@ Use this skill for smoke tests.
                         <div class="st-wand-row st-wand-channel">
                           <span class="st-wand-hint">叙述视角</span>
                           <div class="st-select-wrap" data-select="narr-pov">
-                            <button type="button" id="st-narr-pov" class="st-tool-select st-narr-pov-btn" data-value="" aria-haspopup="listbox" aria-expanded="false" title="叙述人称：跟随作品默认 / 第一人称（我）/ 第三人称（他/她）" aria-label="叙述视角"><span class="btn-lab">默认</span></button>
+                            <button type="button" id="st-narr-pov" class="st-tool-select st-narr-pov-btn" data-value="" aria-haspopup="listbox" aria-expanded="false" title="叙述人称：跟随剧本默认 / 第一人称（我）/ 第三人称（他/她）" aria-label="叙述视角"><span class="btn-lab">默认</span></button>
                             <svg class="st-select-caret" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                             <div id="st-narr-pov-list" class="st-select-list hidden" role="listbox" aria-label="叙述视角">
-                              <button type="button" class="st-select-opt" data-pov="" role="option">默认（跟随作品）</button>
+                              <button type="button" class="st-select-opt" data-pov="" role="option">默认（跟随剧本）</button>
                               <button type="button" class="st-select-opt" data-pov="first" role="option">第一人称（我）</button>
                               <button type="button" class="st-select-opt" data-pov="third" role="option">第三人称（他/她）</button>
                             </div>
@@ -2213,8 +2315,14 @@ Use this skill for smoke tests.
                         </div>
                       </div>
                     </div>
-                  <textarea id="st-input" rows="1" placeholder="输入… 或点续写"></textarea>
+                  <textarea id="st-input" rows="1" placeholder=""></textarea>
                   <div class="composer-actions">
+                    <!-- [UI] 模式折叠按钮：移动端收入发送按钮左侧，点击展开选模式 -->
+                    <div class="st-input-modes" id="st-input-modes">
+                      <button type="button" class="st-mode-btn active" data-mode="auto" title="自动">💬</button>
+                      <button type="button" class="st-mode-btn" data-mode="do" title="行为">🎭</button>
+                      <button type="button" class="st-mode-btn" data-mode="narrate" title="旁白">📖</button>
+                    </div>
                     <button type="button" id="st-stop" class="ghost hidden" title="停止生成" aria-label="停止">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="5" y="5" rx="2"/></svg>
                       <span class="btn-lab">停止</span>
@@ -2234,24 +2342,31 @@ Use this skill for smoke tests.
       <!-- Bookshelf tab -->
       <div id="tab-bookshelf" class="tab-panel hidden">
         <div class="settings card-wide">
-          <div class="row between wrap gap-sm" class="align-start">
+          <div class="row between wrap gap-sm align-start">
             <div>
               <h2>书架</h2>
               <p class="muted">导入 TXT/DOCX · 聊天整理上架 · 阅读 · 进故事馆 · 导出</p>
             </div>
-            <div class="row gap-sm wrap" class="align-center">
-              <label class="btn-file sm" title="导入到书架并生成故事馆 Pack">
-                <input type="file" id="shelf-import-file" accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-                导入 TXT/MD/DOCX
-              </label>
-              <button type="button" id="shelf-refresh" class="ghost sm">刷新</button>
-              <a class="ghost sm" href="/web/bookshelf/" target="_blank" rel="noopener">独立书架</a>
+            <div class="row gap-sm wrap align-center">
+              <button type="button" id="shelf-import-btn" class="ghost sm" title="导入 TXT/MD/DOCX 到书架并生成故事馆 Pack" style="cursor:pointer" onclick="document.getElementById('shelf-import-file').click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                导入书籍
+              </button>
+              <input type="file" id="shelf-import-file" accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+              <button type="button" id="shelf-refresh" class="ghost sm" title="重新扫描书架目录，同步新导入的文件和章节数">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                刷新
+              </button>
+              <a class="ghost sm" href="/web/bookshelf/" target="_blank" rel="noopener" title="打开独立书架阅读页" style="text-decoration:none;color:var(--text-secondary);display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:transparent;padding:0 var(--sp-2h);min-height:2.75rem;height:2.75rem;font-size:var(--fs-md);box-sizing:border-box">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                独立书架
+              </a>
             </div>
           </div>
           <p id="shelf-status" class="muted sm" aria-live="polite"></p>
 
           <div class="shelf-chat-panel card" id="shelf-chat-panel">
-            <div class="row between wrap gap-sm" class="align-center">
+            <div class="row between wrap gap-sm align-center">
               <strong>聊天整理上架</strong>
               <span class="muted sm">手动一键 · 可选定时</span>
             </div>
@@ -2270,16 +2385,16 @@ Use this skill for smoke tests.
               <div class="row wrap gap-sm shelf-sched-row">
                 <label class="row sm no-margin gap-sm"><input type="checkbox" id="shelf-sched-enabled" /> 启用定时</label>
                 <label class="sm">间隔（小时）
-                  <input id="shelf-sched-hours" type="number" min="1" max="720" value="24" class="sm" class="w-88" />
+                  <input id="shelf-sched-hours" type="number" min="1" max="720" value="24" class="sm w-88" />
                 </label>
                 <label class="sm">最少回合
-                  <input id="shelf-sched-turns" type="number" min="1" max="999" value="3" class="sm" class="w-88" />
+                  <input id="shelf-sched-turns" type="number" min="1" max="999" value="3" class="sm w-88" />
                 </label>
                 <label class="row sm no-margin gap-sm"><input type="checkbox" id="shelf-sched-topack" checked /> 生成 Pack</label>
                 <button type="button" id="shelf-sched-save" class="ghost sm">保存定时</button>
                 <button type="button" id="shelf-sched-run" class="ghost sm">立即跑一轮</button>
               </div>
-              <p id="shelf-sched-meta" class="muted sm" class="mt-2"></p>
+              <p id="shelf-sched-meta" class="muted sm mt-2"></p>
             </details>
           </div>
           <div id="bookshelf-grid" class="bookshelf-grid" data-empty="书架为空，导入 TXT/MD/DOCX 开始阅读">
@@ -2291,12 +2406,25 @@ Use this skill for smoke tests.
           <div class="reader-header">
             <button type="button" id="reader-back" class="ghost">← 返回书架</button>
             <span id="reader-title" class="reader-title"></span>
-            <span class="row gap-sm" class="ml-auto">
+            <span class="row gap-sm ml-auto">
               <button type="button" id="reader-to-pack" class="sm">进故事馆</button>
               <button type="button" id="reader-export" class="ghost sm">导出</button>
             </span>
           </div>
           <pre id="reader-content" class="preview reader-content"></pre>
+        </div>
+
+        <!-- Foliate 分页阅读覆盖层（替换 pre dump） -->
+        <div id="shelf-foliate-wrap" class="shelf-foliate-wrap hidden">
+          <div class="shelf-foliate-toolbar">
+            <button type="button" id="shelf-foliate-back" class="ghost sm">← 返回书架</button>
+            <span id="shelf-foliate-title" class="shelf-foliate-title"></span>
+            <span class="row gap-sm ml-auto">
+              <button type="button" id="shelf-foliate-pack" class="sm">进故事馆</button>
+              <button type="button" id="shelf-foliate-export" class="ghost sm">导出</button>
+            </span>
+          </div>
+          <iframe id="shelf-foliate-frame" class="shelf-foliate-frame" src="about:blank" title="Foliate 阅读器"></iframe>
         </div>
       </div>
 
@@ -2333,10 +2461,18 @@ Use this skill for smoke tests.
     <div class="st-modal-card st-assist-card">
       <div class="st-modal-head">
         <span class="st-modal-title">剧情助手</span>
+        <span id="st-assist-ctx" class="st-assist-ctx muted sm"></span>
         <button type="button" id="st-assist-close" class="ghost st-modal-close" aria-label="关闭">✕</button>
       </div>
       <div class="st-assist-body" id="st-assist-body"></div>
-      <div class="st-assist-tools" style="display:flex;gap:var(--sp-2h);padding:var(--sp-2h) var(--sp-4h) 0">
+      <div class="st-assist-tools" style="display:flex;gap:var(--sp-2h);padding:var(--sp-2h) var(--sp-4h) 0;align-items:center">
+        <span class="muted sm" style="margin-right:2px">能力</span>
+        <div id="st-assist-tier" class="st-assist-tier" style="display:flex;gap:4px">
+          <button type="button" data-tier="read" class="st-tier-btn is-active" title="读取原著/查设定（安全）">🔍 只读</button>
+          <button type="button" data-tier="data" class="st-tier-btn" title="修改角色卡/世界书/章节">✏️ 数据</button>
+          <button type="button" data-tier="code" class="st-tier-btn" title="修改源码/运行命令（高危）">⚡ 代码</button>
+        </div>
+        <span style="flex:1"></span>
         <button type="button" id="st-assist-reroll" class="ghost sm" title="重生成">↻ 重生成</button>
         <button type="button" id="st-assist-rewind" class="ghost sm" title="回退">⟲ 回退</button>
       </div>
@@ -2351,9 +2487,16 @@ Use this skill for smoke tests.
   </div>
 
   <script>window._TOKEN_KEY = "kaleido_token"; window._USER_KEY = "kaleido_username";</script>
-<script src="./assets/app.js?v=1787805173"></script>
+<script src="./assets/api_token_capture.js?v=1787493000"></script>
+<script src="./assets/app.js?v=1788518732"></script>
 <script src="./assets/scene_cards.js"></script>
 <script src="./assets/dual_agent.js"></script>
 <script src="./assets/story-graph-editor.js"></script>
-</body>
+<script src="./assets/st_presets.js?v=1787491200"></script>
+<script src="./assets/realm_market.js?v=1787493600"></script>
+<script src="./assets/ai_admin_enhance.js?v=1787499999"></script>
+    <script src="./assets/shelf_foliate_reader.js?v=1787500200"></script>
+    <script src="./assets/shelf_grid_layout.js?v=1787500600"></script>
+    <script type="module" src="./assets/tavern_paint.js?v=20260830B"></script>
+  </body>
 </html>
