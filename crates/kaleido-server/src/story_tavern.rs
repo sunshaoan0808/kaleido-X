@@ -435,7 +435,7 @@ pub fn plan_quality_stages(quality: TurnQuality) -> Vec<QualityStage> {
 // ─── P0 审稿/修订/终检 prompt 模板（中文）──────────────────────────────────
 
 /// 审稿角色：只审不改，返回问题清单。
-const QUALITY_REVIEW_SYS: &str = "你是一位资深网文审稿人。请只审不改，针对下方叙事正文输出简洁的中文问题清单，逐条一行。覆盖：连续性、人物声线、文风、剧情逻辑、节奏。每条格式：`[问题] 位置/维度：问题说明（含可执行修改建议）`。不要输出正文，不要输出赞扬。\n\n[P4/P7 2026-08-15] 必须额外检查：①与上一回合正文的重复度——若大面积复用句式/意象/段落，列为 blocker/continuity 问题；②角色声线——对照角色卡示例对白校验，若角色被写成气音/半截话/被动弱气而示例对白是泼辣直接，列为 blocker 问题。";
+const QUALITY_REVIEW_SYS: &str = "你是一位资深网文审稿人。请只审不改，针对下方叙事正文输出简洁的中文问题清单，逐条一行。覆盖：连续性、人物声线、文风、剧情逻辑、节奏。每条格式：`[问题] 位置/维度：问题说明（含可执行修改建议）`。不要输出正文，不要输出赞扬。\n\n[P4/P7 2026-08-15] 必须额外检查：①与上一回合正文的重复度——若大面积复用句式/意象/段落，列为 blocker/continuity 问题；②角色声线——对照角色卡示例对白校验，若角色被写成气音/半截话/被动弱气而示例对白是泼辣直接，列为 blocker 问题。\n\n[H6 吞噬 humanizer-zh] 必须额外检查去 AI 味（列为 blocker/style 问题）：①破折号“——”一回合超过 1 处即列出；②三段式列举（A、B和C）；③“此外/彰显/格局/作为……的证明”类 AI 词；④“不仅仅是……而是……”排比；⑤与上一回合重复的整句/意象。";
 
 /// [时间天气 v2 2026-08-17] LLM 剧情时间评估间隔（回合）：每 N 回合评估一次是否推进时间。
 /// 低频省成本——正文 [时间推进] 标注与用户自然语言信号是主通道，LLM 评估是兜底校准。
@@ -4268,6 +4268,25 @@ fn build_tavern_system_prompt(
             lines.push("\n## 文风要求".into());
             lines.extend(style_lines);
         }
+    }
+    // H4 (吞噬 humanizer-zh): 去 AI 味硬约束 —— 上回合 humanize 诊断驱动，
+    // 有命中则点名，无则通用约束。纯文本注入，零 LLM。
+    {
+        let mut hz_lines: Vec<String> = vec!["\n## 去 AI 味（硬约束）".into()];
+        if let Some(dg) = session.last_turn_diagnostic.as_ref().filter(|d| d.humanize_hits > 0) {
+            hz_lines.push(format!(
+                "上回合去 AI 味 {}／50（{}）：重点改掉以下毛病，本回合正文不许再犯：",
+                dg.humanize_total, dg.humanize_grade
+            ));
+            // 通用三条（turn 20/21 实测最高频）
+            hz_lines.push("1. 少用破折号“——”：一回合至多 1 处，优先用逗号/句号断句；".into());
+            hz_lines.push("2. 不用三段式列举（A、B和C）：两项或拆句；".into());
+            hz_lines.push("3. 不用“此外/彰显/格局/作为……的证明”类 AI 词；".into());
+            hz_lines.push("4. 不用“不仅仅是……而是……”排比；".into());
+        } else {
+            hz_lines.push("少用破折号“——”（一回合至多 1 处）；不用三段式列举；不用“此外/彰显/格局”类 AI 词；不用“不仅仅是……而是……”排比。".into());
+        }
+        lines.extend(hz_lines);
     }
     // S4 (吞噬 denova director_plan): 导演计划注入 + 红线下沉 —— 导演计划是意图，不是自由改写
     if let Some(plan) = &session.director_plan {
@@ -8246,6 +8265,16 @@ async fn start_turn(
             // 推理混入正文且占用输出预算导致正文后段像「没写完」。接入公共链后全档位生效。
             full_text = strip_trailing_metadiscourse(full_text);
 
+            // H5 (吞噬 humanizer-zh): 破折号确定性硬修（全档位，零 LLM）。
+            // 中文叙事“——”90% 可换逗号/句号；替换数进日志，humanize 诊断跑修后文本。
+            {
+                let (fixed, n) = kaleido_core::humanize::hard_fix_dashes(&full_text);
+                if n > 0 {
+                    tracing::info!(n, "st humanize: 破折号硬修");
+                    full_text = fixed;
+                }
+            }
+
             // ST-30 (2026-08-15 根治): 剥离 <角色清单>…</角色清单> 结构化块（生成端角色自报）。
             // LLM 在回合正文末尾列出实际出场人名，守卫做精确集合比对——根治切词启发式的
             // 漏报（叙述形态点名）与误报（切词切碎短语）。清单缺失时守卫自动降级启发式。
@@ -9549,11 +9578,16 @@ async fn start_turn(
                     sess.turn_cost_ledger.total_duration_ms += elapsed_ms_v;
                     sess.turn_cost_ledger.est_cost_usd += est.est_cost_usd;
                     // G10 (吞噬 denova D1): 回合正常完成 → 写入诊断摘要（accepted=true）。
+                    // H3 (吞噬 humanizer-zh): 去 AI 味确定性检测（纯核，无 LLM）。
+                    let hz = kaleido_core::humanize::analyze(&full_text);
                     sess.last_turn_diagnostic = Some(kaleido_core::TurnDiagnostic {
                         turn: sess.turn,
                         accepted: true,
                         duration_ms: elapsed_ms_v,
                         llm_ok: true,
+                        humanize_total: hz.total,
+                        humanize_grade: hz.grade().into(),
+                        humanize_hits: hz.hits.len(),
                     });
                 }
 
@@ -10004,6 +10038,9 @@ async fn stop_turn(
             accepted: false,
             duration_ms,
             llm_ok: false,
+            humanize_total: 0,
+            humanize_grade: String::new(),
+            humanize_hits: 0,
         });
         tracing::info!(%session_id, run_id = %body.run_id, turn, duration_ms, "st turn stopped (diagnostic recorded)");
         if let Err(e) = state.sessions_tavern.save(sess) {

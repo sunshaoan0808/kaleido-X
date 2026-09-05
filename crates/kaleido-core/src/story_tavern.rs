@@ -2606,6 +2606,15 @@ pub struct TurnDiagnostic {
     /// LLM 是否成功（对白生成成功）。
     #[serde(default)]
     pub llm_ok: bool,
+    /// 去 AI 味评分（humanizer-zh 5 维 50 分制，0 = 未跑）。
+    #[serde(default)]
+    pub humanize_total: u8,
+    /// 去 AI 味等级（优秀/良好/需修订/空）。
+    #[serde(default)]
+    pub humanize_grade: String,
+    /// 去 AI 味命中数。
+    #[serde(default)]
+    pub humanize_hits: usize,
 }
 
 fn default_timeline() -> String {
