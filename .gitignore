@@ -44,3 +44,6 @@ sessions.db
 # OS / editor
 .DS_Store
 *.swp
+
+# 运行时诊断转储（角色蒸馏 U+FFFD 落盘，误提交过隐私残留）
+**/fffd-raw-dump.json
