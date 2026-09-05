@@ -11015,6 +11015,7 @@ async fn put_pockets(
         _ => return bad_request("ST_POCKETS_BAD_BODY", "expected object {characterId: Pockets}"),
     };
     let mut updated = 0usize;
+    let is_ops_form = map.contains_key("characterId") && map.contains_key("ops");
     for (cid, v) in map {
         if cid.is_empty() { continue; }
         // allow pocketsEnabled alongside pocket entries: {"cc-xxx": {...}, "pocketsEnabled": true}
@@ -11022,6 +11023,9 @@ async fn put_pockets(
             if let Some(b) = v.as_bool() { sess.pockets_enabled = b; }
             continue;
         }
+        // ops 形态保留键不进 pockets map
+        if is_ops_form && (cid == "characterId" || cid == "ops") { continue; }
+        if !v.is_object() { continue; }
         let p = kaleido_core::pockets::Pockets::from_json(v);
         // normalize via from_json (caps, tidy)
         sess.pockets.insert(cid.clone(), p);
@@ -12049,7 +12053,7 @@ async fn run_event_extract(
         let msg_n = sess.messages.len() as i64;
         let kick = sess.journal.salience_gate.allow(&sid, msg_n);
         for b in arr {
-            let chg = b.get("bondDelta").or_else(|| b.get("change")).or_else(|| b.get("delta")).and_then(|x| x.as_i64()).unwrap_or(0);
+            let chg = b.get("bondDelta").or_else(|| b.get("change")).or_else(|| b.get("delta")).or_else(|| b.get("score")).and_then(|x| x.as_i64()).unwrap_or(0);
             let (ch_name, bd, td) = (
                 b.get("character").and_then(|x| x.as_str()).unwrap_or("").trim(),
                 chg.clamp(-10, 10) as i32,

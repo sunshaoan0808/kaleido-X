@@ -343,7 +343,7 @@ impl Pockets {
 const FILLER: &[&str] = &["a", "an", "the", "her", "his", "their", "my", "your", "of"];
 
 fn norm(s: &str) -> String {
-    s.to_ascii_lowercase().chars().filter(|c| c.is_ascii_alphanumeric() || *c == ' ').collect()
+    s.to_lowercase().chars().filter(|c| c.is_alphanumeric() || *c == ' ').collect()
 }
 
 fn content_tokens(s: &str) -> std::collections::HashSet<String> {
