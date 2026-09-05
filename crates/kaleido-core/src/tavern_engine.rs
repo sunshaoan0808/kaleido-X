@@ -80,6 +80,21 @@ pub fn classify_engine_tag(user_message: &str) -> EngineTag {
 
 /// Try to advance node based on engine tag and node exits.
 /// Returns (next_node_id, next_chapter_id) if advancement occurs.
+/// [主线完结判定] 当前节点无有效外向 exit（自环不算）→ 主线走完，进入自由生长。
+/// 调用方（守卫/导演计划/章节目标）据此静默主线判据，只保留自由判据（双持/声线/停滞）。
+pub fn is_mainline_exhausted(pack: &StoryPack, session: &TavernSession) -> bool {
+    let nid = match session.node_id.as_deref() {
+        Some(n) => n,
+        None => return false,
+    };
+    let node = match pack.nodes.iter().find(|n| n.id == nid) {
+        Some(n) => n,
+        None => return false,
+    };
+    // 有效 exit = next 指向其他节点
+    !node.exit.iter().any(|e| !e.next.trim().is_empty() && e.next != node.id)
+}
+
 pub fn try_advance_node(
     pack: &StoryPack,
     session: &mut TavernSession,
@@ -1065,6 +1080,32 @@ mod tests {
     use crate::story_tavern::{ActorStateSystem, TurnCostLedger};
     use crate::world_state::WorldState;
     use serde_json::json;
+
+    #[test]
+    fn test_mainline_exhausted() {
+        use crate::story_tavern::{NodeExit, StoryNode, StoryPack};
+        let mut pack: StoryPack = serde_json::from_value(serde_json::json!({
+            "id": "p", "title": "t", "source": {"type": "demo", "refs": []},
+            "characters": [], "worldBookIds": [], "chapters": [],
+            "nodes": [
+                {"id": "n1", "chapterId": "ch01", "title": "t1",
+                 "exit": [{"id": "e1", "when": "", "next": "n2"}]},
+                {"id": "n2", "chapterId": "ch01", "title": "t2",
+                 "exit": [{"id": "e2", "when": "", "next": "n2"}]}
+            ],
+            "loreEntries": [], "defaultMode": "mainline", "maxTier": "standard",
+            "language": "zh", "createdAt": "", "updatedAt": "",
+            "stageDirector": {}, "eventPackages": [],
+            "actorStateConfig": {}, "worldline": []
+        })).unwrap();
+        let mut s = create_test_session();
+        s.node_id = Some("n1".into());
+        assert!(!super::is_mainline_exhausted(&pack, &s));
+        s.node_id = Some("n2".into());
+        assert!(super::is_mainline_exhausted(&pack, &s), "自环应判完结");
+        s.node_id = Some("nx".into());
+        assert!(!super::is_mainline_exhausted(&pack, &s), "未知节点不判完结");
+    }
 
     #[test]
     fn test_classify_engine() {

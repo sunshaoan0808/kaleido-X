@@ -9250,13 +9250,18 @@ async fn start_turn(
                             }
                             g
                         };
+                        // [主线完结] pack 走完终点 → 自由生长：主线判据静默，只保留人物+双持
+                        let exhausted = kaleido_core::is_mainline_exhausted(&pack, &sess);
+                        if exhausted {
+                            tracing::info!("st guard: 主线已完结·自由生长中（节拍/目标/出场静默）");
+                        }
                         let mut vs = guard_narrative(
                             &guard_text,
                             &chapter_body,
                             &known,
-                            &present_names,
-                            &locked_beats,
-                            &chapter_goals,
+                            if exhausted { &[] } else { &present_names },
+                            if exhausted { &[] } else { &locked_beats },
+                            if exhausted { &[] } else { &chapter_goals },
                             roster_names.as_deref(),
                         );
                         // [双持检测] 同一物品在两个角色口袋 = 吃书（turn 17 银锁双持实踩）
@@ -10779,6 +10784,7 @@ async fn get_director_config(
     };
     Json(json!({
         "stageDirector": pack.stage_director,
+        "mainlineExhausted": kaleido_core::is_mainline_exhausted(&pack, &sess),
         "directorPlan": sess.director_plan,
         "directorPending": sess.director_pending,
         // G13/G14: 当前后台导演任务 id（None = 无后台任务在跑）。

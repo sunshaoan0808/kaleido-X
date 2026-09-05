@@ -586,7 +586,26 @@ async function stStageRender() {
     if (stStageEditing && stStageSd) {
       h += stStageEditForm(stStageSd, tavernSession.sessionId);
     }
-    out += stStageSec('🎛 导演台', pending ? '待执行' : (plan.goal ? '运行中' : '空闲'), h);
+    // [主线完结] pack 走完终点 → 标题提示自由生长（dc.mainlineExhausted）
+    try {
+      if (dc.mainlineExhausted) {
+        out += stStageSec('🎛 导演台', '主线已完结·自由生长中', h);
+      } else {
+        out += stStageSec('🎛 导演台', pending ? '待执行' : (plan.goal ? '运行中' : '空闲'), h);
+      }
+    } catch (_) {
+      out += stStageSec('🎛 导演台', pending ? '待执行' : (plan.goal ? '运行中' : '空闲'), h);
+    }
+    // H3 (吞噬 humanizer-zh): 去 AI 味评分展示（lastTurnDiagnostic 直带）
+    try {
+      const dg = tavernSession.lastTurnDiagnostic || tavernSession.last_turn_diagnostic || null;
+      if (dg && dg.humanizeTotal) {
+        const col = dg.humanizeTotal >= 45 ? '#7CFC98' : (dg.humanizeTotal >= 35 ? '#ffd166' : '#ff6b6b');
+        out += stStageSec('✍️ 去 AI 味', dg.humanizeTotal + '/50 ' + (dg.humanizeGrade || ''),
+          '<div class="st-stage-row"><b>评分</b><span style="color:' + col + '">' + dg.humanizeTotal + '/50 ' +
+          (dg.humanizeGrade || '') + '</span><b>命中</b><span>' + (dg.humanizeHits || 0) + ' 处</span></div>');
+      }
+    } catch (_) {}
     // P2-3 叙界守卫事件回放（director-config 返回 guardEvents: [{...}] 最近 20 条，格式 [high|med][维度] 消息）
     const gEvents = Array.isArray(dc.guardEvents) ? dc.guardEvents : [];
     if (gEvents.length) {

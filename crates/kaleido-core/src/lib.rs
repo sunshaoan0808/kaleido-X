@@ -303,7 +303,7 @@ pub use tavern_engine::{
     build_memory_context, classify_engine_tag,
     cosine_similarity, heuristic_l2_l3_from_turn, parse_extraction_response, persist_cross_session,
     post_turn_extraction, tokenize,
-    try_advance_node,
+    try_advance_node, is_mainline_exhausted,
     // [morphling Wave B3 2026-08-16] 章节剧情摘要账本
     build_chapter_diary_prompt, parse_chapter_diary_response,
 };
