@@ -587,6 +587,135 @@ pub async fn get_run(
     }
 }
 
+/// POST /api/v1/book-travel/runs/{id}/open-session — 漫游→酒馆（一键开连载）。
+/// 读 run pipeline 产物，建 P3 穿书会话并预填初始状态：
+/// summary→MemoryL3.facts / keyChoices→milestones(kind=choice) / unresolvedConflicts→promises(open) /
+/// scenePlan.activeCharacters→present / Exit beat→compass.currentFocus。
+/// 可选 body {packId, title, quality}；缺省 packId=demo-rain-alley。
+pub async fn open_session(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> axum::response::Response {
+    let session = match session_from(&state, &headers) {
+        Ok(s) => s,
+        Err(r) => return r,
+    };
+    let run_id = id.trim();
+    if run_id.is_empty() {
+        return bad_request("BT_ID", "需要 run id");
+    }
+    let job = match state.jobs.get(run_id) {
+        None => return not_found("BT_NOT_FOUND", "任务不存在"),
+        Some(j) if j.kind != "book_travel" => return bad_request("BT_KIND", "不是 book_travel 任务"),
+        Some(j) if j.workspace_id != session.workspace_id && j.user_id != session.user_id => {
+            return forbidden("BT_FORBIDDEN", "任务不属于当前工作区")
+        }
+        Some(j) => j,
+    };
+    let result = match job.result.clone() {
+        Some(r) => r,
+        None => return bad_request("BT_NO_RESULT", "任务尚无结果（未完成 pipeline）"),
+    };
+    // 提取 stages
+    let stages = result.get("stages").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let stage_result = |step: &str| -> Value {
+        stages.iter().find(|s| s.get("step").and_then(|v| v.as_str()) == Some(step))
+            .and_then(|s| s.get("result")).cloned().unwrap_or(json!({}))
+    };
+    let title = result.get("title").and_then(|v| v.as_str()).unwrap_or("漫游连载").to_string();
+    let mem_raw = stage_result("summarize_memory");
+    // 兼容两层：LLM 直挂 {summary/keyChoices/unresolvedConflicts} / heuristic 嵌套 {memory:{...}}
+    let mem = mem_raw.get("memory").cloned().unwrap_or(mem_raw.clone());
+    let summary = mem.get("summary").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let key_choices: Vec<String> = mem.get("keyChoices").and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    let conflicts: Vec<String> = mem.get("unresolvedConflicts").and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    let plan = stage_result("plan_scene");
+    let scene_plan = plan.get("scenePlan").cloned().unwrap_or(json!({}));
+    let active_chars: Vec<String> = scene_plan.get("activeCharacters").and_then(|v| v.as_array())
+        .map(|a| a.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect()).unwrap_or_default();
+    let assemble = stage_result("assemble");
+    let plan_text = assemble.get("plan").and_then(|v| v.as_str())
+        .or_else(|| assemble.get("plan_text").and_then(|v| v.as_str())).unwrap_or("").to_string();
+    let pack_id = body.get("packId").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty())
+        .unwrap_or("demo-rain-alley").to_string();
+    let sess_title = body.get("title").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty())
+        .map(|s| s.to_string()).unwrap_or_else(|| format!("{title}·连载"));
+    // 建 P3 穿书会话
+    let req = kaleido_core::CreateSessionRequest {
+        pack_id: pack_id.clone(),
+        playable: kaleido_core::Playable::P3,
+        play_mode: kaleido_core::PlayMode::Mainline,
+        user_tier: kaleido_core::ContentTier::Standard,
+        global_tier: None,
+        entry: None,
+        player_display_name: None,
+        adult_confirmed: true,
+        title: Some(sess_title),
+        owner: Some(session.user_id.clone()),
+        quality: kaleido_core::Quality::Lite,
+        author_project_id: None,
+        work_id: None,
+    };
+    let sess = match state.sessions_tavern.create_from_pack(&state.packs, req) {
+        Ok(s) => s,
+        Err(e) => return map_core_err(e),
+    };
+    let sid = sess.session_id.clone();
+    // 原子预填初始状态
+    let summary_c = summary.clone();
+    let key_choices_c = key_choices.clone();
+    let conflicts_c = conflicts.clone();
+    let active_chars_c = active_chars.clone();
+    let plan_text_c = plan_text.clone();
+    let save_r = state.sessions_tavern.update_session(&sid, |existing| {
+        if !summary_c.trim().is_empty() {
+            existing.memory_l3.facts.push(format!("【漫游前史】{summary_c}"));
+            existing.memory_l3.updated_at_turn = 0;
+        }
+        for kc in &key_choices_c {
+            existing.milestones.push(kaleido_core::relationship_tiers::Milestone {
+                id: uuid::Uuid::new_v4().to_string(),
+                character: String::new(),
+                label: kc.clone(),
+                kind: "choice".into(),
+                tier: 0,
+                turn: 0,
+            });
+        }
+        for cf in &conflicts_c {
+            existing.promises.push(kaleido_core::promise::Promise::new("", "char", cf.clone(), 0));
+        }
+        if !active_chars_c.is_empty() {
+            existing.present_character_ids = active_chars_c.clone();
+        }
+        // Exit beat/plan 首段 → compass.currentFocus（手写优先：建完即空，直接种）
+        let focus_src = if !plan_text_c.trim().is_empty() { plan_text_c.clone() } else { String::new() };
+        if !focus_src.trim().is_empty() {
+            let focus: String = focus_src.chars().take(300).collect();
+            existing.actor_states.mount_compass(kaleido_core::Compass::new("", focus));
+        }
+        Ok(())
+    });
+    if let Err(e) = save_r {
+        return map_core_err(e);
+    }
+    let sess2 = state.sessions_tavern.get(&sid).unwrap_or(sess);
+    Json(json!({
+        "ok": true,
+        "session": sess2,
+        "seeded": {
+            "l3Facts": if summary.trim().is_empty() { 0 } else { 1 },
+            "milestones": key_choices.len(),
+            "promises": conflicts.len(),
+            "present": active_chars,
+        },
+    })).into_response()
+}
+
 pub async fn stop(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1975,4 +2104,47 @@ fn heuristic_classify(text: &str, title: Option<&str>, genre_hint: Option<&str>)
 
 fn contains_any(hay: &str, needles: &[&str]) -> bool {
     needles.iter().any(|n| hay.contains(n))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // open-session 产物提取：stages → L3/milestones/promises/present/focus 的映射口径
+    fn fake_pipeline_result() -> Value {
+        json!({
+            "title": "雨夜",
+            "stages": [
+                {"step": "assemble", "result": {"plan": "Entrance 进书；Exit 离书"}},
+                {"step": "plan_scene", "result": {"scenePlan": {"activeCharacters": ["沈棠", "林晚"]}}},
+                {"step": "summarize_memory", "result": {
+                    "summary": "雨夜茶馆初见",
+                    "keyChoices": ["收下银锁"],
+                    "unresolvedConflicts": ["白梅死因未明"]
+                }}
+            ]
+        })
+    }
+    #[test]
+    fn open_session_extracts_stages() {
+        let result = fake_pipeline_result();
+        let stages = result.get("stages").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        let sr = |step: &str| -> Value {
+            stages.iter().find(|s| s.get("step").and_then(|v| v.as_str()) == Some(step))
+                .and_then(|s| s.get("result")).cloned().unwrap_or(json!({}))
+        };
+        let mem = sr("summarize_memory");
+        assert_eq!(mem.get("summary").and_then(|v| v.as_str()).unwrap(), "雨夜茶馆初见");
+        assert_eq!(mem.get("keyChoices").and_then(|v| v.as_array()).unwrap().len(), 1);
+        assert_eq!(mem.get("unresolvedConflicts").and_then(|v| v.as_array()).unwrap().len(), 1);
+        let plan = sr("plan_scene");
+        assert_eq!(plan.get("scenePlan").and_then(|v| v.get("activeCharacters"))
+            .and_then(|v| v.as_array()).unwrap().len(), 2);
+        let asm = sr("assemble");
+        assert!(asm.get("plan").and_then(|v| v.as_str()).unwrap().contains("Entrance"));
+    }
+    #[test]
+    fn open_session_empty_result_defaults() {
+        let result = json!({"title": "空"});
+        assert!(result.get("stages").and_then(|v| v.as_array()).is_none());
+    }
 }

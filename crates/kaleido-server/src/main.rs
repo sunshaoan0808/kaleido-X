@@ -395,6 +395,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/book-travel/stream", get(book_travel::stream))
         .route("/api/v1/book-travel/runs", get(book_travel::list_runs))
         .route("/api/v1/book-travel/runs/{id}", get(book_travel::get_run))
+        .route("/api/v1/book-travel/runs/{id}/open-session", post(book_travel::open_session))
         .route("/api/v1/book-travel/pipeline", post(book_travel::start_pipeline))
         .route("/api/v1/book-travel/{step}", post(book_travel::start_step))
         // S3 partner + settings

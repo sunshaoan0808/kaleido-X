@@ -960,6 +960,25 @@ export function initJobsUI() {
       }
     };
   }
+  // [漫游→酒馆] 一键开连载：用当前 run 的 pipeline 产物建 P3 会话
+  if ($('bt-open-session')) {
+    $('bt-open-session').onclick = async () => {
+      try {
+        const id = ($('bt-run-id').value || '').trim() || window.__btLastRunId || '';
+        if (!id) throw new Error('需要 run id（先跑一次 pipeline）');
+        const data = await api('/api/v1/book-travel/runs/' + encodeURIComponent(id) + '/open-session', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        setPanel('bt-out', 'bt-msg', data);
+        if (data.session && data.session.sessionId) {
+          if ($('bt-msg')) $('bt-msg').textContent = '已开连载会话 ' + data.session.sessionId.slice(0, 8) + '（P3 穿书）';
+        }
+      } catch (e) {
+        setPanel('bt-out', 'bt-msg', null, e);
+      }
+    };
+  }
   if ($('bt-stop')) {
     $('bt-stop').onclick = async () => {
       try {
