@@ -640,6 +640,101 @@ async fn call_llm(state: &AppState, system: &str, user: &str) -> Result<String, 
         .ok_or_else(|| "LLM empty content".to_string())
 }
 
+/// Token 账本（吞噬 DeterminFlow `token_usage.py` 节点级账本口径，Kaleido 化）。
+/// 存 `projects/{pid}/ledger.json`：{total:{prompt,completion,calls},byOp:{op:{prompt,completion,calls}},updatedAt}。
+fn ledger_path(pid: &str) -> String {
+    format!("projects/{pid}/ledger.json")
+}
+
+fn read_ledger(state: &AppState, ws: &str, pid: &str) -> Value {
+    state
+        .works
+        .read_text(ws, &ledger_path(pid))
+        .ok()
+        .and_then(|b| serde_json::from_str::<Value>(&b.content).ok())
+        .unwrap_or(json!({"total":{"prompt":0,"completion":0,"calls":0},"byOp":{}}))
+}
+
+fn add_ledger(state: &AppState, ws: &str, pid: &str, op: &str, prompt: u64, completion: u64) {
+    let mut v = read_ledger(state, ws, pid);
+    let bump = |o: &mut Value| {
+        o["prompt"] = json!(o.get("prompt").and_then(|x| x.as_u64()).unwrap_or(0) + prompt);
+        o["completion"] = json!(o.get("completion").and_then(|x| x.as_u64()).unwrap_or(0) + completion);
+        o["calls"] = json!(o.get("calls").and_then(|x| x.as_u64()).unwrap_or(0) + 1);
+    };
+    bump(&mut v["total"]);
+    if v.get("byOp").map(|x| x.is_object()).unwrap_or(false) == false {
+        v["byOp"] = json!({});
+    }
+    let mut entry = v["byOp"].get(op).cloned().unwrap_or(json!({"prompt":0,"completion":0,"calls":0}));
+    bump(&mut entry);
+    v["byOp"][op] = entry;
+    v["updatedAt"] = json!(now());
+    let s = serde_json::to_string_pretty(&v).unwrap_or_default();
+    let _ = state.works.mkdir(ws, &format!("projects/{pid}"));
+    let _ = state.works.write_text(ws, &ledger_path(pid), &s);
+}
+
+/// 带计数的 LLM 调用（op = suggest/guard/triage/posthoc），usage 解析容错。
+async fn call_llm_tracked(
+    state: &AppState,
+    ws: &str,
+    pid: &str,
+    op: &str,
+    system: &str,
+    user: &str,
+) -> Result<(String, u64, u64), String> {
+    let llm = state.app_state.resolve_llm(
+        state.llm_base.as_deref(),
+        state.llm_key.as_deref(),
+        &state.llm_model,
+    );
+    if llm.base_url.trim().is_empty() || llm.api_key.trim().is_empty() {
+        return Err("LLM not configured".into());
+    }
+    let model = if llm.model.is_empty() {
+        state.llm_model.clone()
+    } else {
+        llm.model
+    };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let url = format!("{}/chat/completions", llm.base_url.trim_end_matches('/'));
+    let body = json!({
+        "model": model, "stream": false, "temperature": 0.7,
+        "max_tokens": 4096,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    });
+    let resp = client
+        .post(&url)
+        .bearer_auth(&llm.api_key)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("LLM request failed: {e}"))?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("LLM read failed: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("LLM HTTP {status}"));
+    }
+    let v: Value = serde_json::from_str(&text).map_err(|e| format!("LLM bad json: {e}"))?;
+    let content = v
+        .pointer("/choices/0/message/content")
+        .and_then(|c| c.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "LLM empty content".to_string())?;
+    let pt = v.pointer("/usage/prompt_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+    let ct = v.pointer("/usage/completion_tokens").and_then(|x| x.as_u64()).unwrap_or(0);
+    add_ledger(state, ws, pid, op, pt, ct);
+    Ok((content, pt, ct))
+}
+
 /// 续写一致性守卫 system（照搬 Scriverse 原版口径）。
 const GUARD_SYS: &str = "你是续写一致性守卫。按七维逐项检查：①设定一致性 consistency（事件顺序/世界规则/角色属性/状态记录）；②人设一致性 character（行为/对话/动机）；③节奏平衡 pacing（连续同类型/主线停滞/单章情感质变/情节越界）；④叙事连贯 continuity（场景过渡/因果/信息一致）；⑤伏笔健康 foreshadow（长期未推进/新伏笔回收方向）；⑥钩子质量 hook（章末吸引力/类型重复/主线一致）；⑦审美品质 aesthetic（AI 味/叙事手法/情感打动力，每子项必须引用原文举证）。输出分两块：第一块是 JSON 数组（issues），每项必须带 dimension（七维之一）+ type（character/location/time/world/outline/foreshadow）双打标；description 必须引用候选正文原文 10 字以上举证；aesthetic 维 candidateQuote 不得为空。第二块是 JSON 对象（七维评分），格式 {\"dimensions\":{\"consistency\":{\"score\":0-100,\"comment\":\"…\"},…七维全列}}。两块都必须输出，不得省略第二块。不得把文风偏好当成事实冲突。";
 
@@ -758,6 +853,10 @@ pub fn suggest_router() -> Router<AppState> {
         .route(
             "/api/v1/author/projects/{id}/arcs",
             get(get_arcs),
+        )
+        .route(
+            "/api/v1/author/projects/{id}/ledger",
+            get(get_ledger),
         )
         .route(
             "/api/v1/author/projects/{id}/suggestions/{sg}",
@@ -1251,6 +1350,24 @@ async fn get_arcs(
     Json(json!({"ok": true, "count": all.len(), "arcs": arcs})).into_response()
 }
 
+/// Token 账本查询（总额+分环节）。
+async fn get_ledger(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(pid): Path<String>,
+) -> Response {
+    let session = match session_from(&state, &headers) {
+        Ok(s) => s,
+        Err(r) => return r,
+    };
+    let pid = match safe_id(&pid) {
+        Ok(v) => v,
+        Err(r) => return r,
+    };
+    let v = read_ledger(&state, &session.workspace_id, &pid);
+    Json(json!({"ok": true, "ledger": v})).into_response()
+}
+
 async fn get_suggest(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1344,8 +1461,8 @@ async fn run_guard(
         "检查下面的续写候选是否与提供的上下文冲突。输出 JSON 数组，没有冲突时输出 []。\n每项字段必须为：type（character/location/time/world/outline/foreshadow）、severity（low/medium/high）、title、description（必须引用候选正文原文 10 字以上举证）、candidateQuote、sourceRefs（数组）、suggestion。\n不得把文风偏好当成事实冲突，不得使用 Markdown 代码块。\n续写候选：\n{}\n\n章节正文：\n{}{}",
         doc.content, ch.content, format!("{}{}", related_ctx, stats_line)
     );
-    let raw = match call_llm(&state, GUARD_SYS, &user).await {
-        Ok(r) => r,
+    let raw = match call_llm_tracked(&state, &session.workspace_id, &pid, "guard", GUARD_SYS, &user).await {
+        Ok((r, _, _)) => r,
         Err(e) => {
             // failed 状态落盘（原版同款）
             let g = ContinuationGuard {
@@ -1389,7 +1506,7 @@ async fn run_guard(
             "对下面的续写候选按七维打分 0-100，只输出 JSON 对象，不要解释：\n{{\"dimensions\":{{\"consistency\":{{\"score\":N,\"comment\":\"…\"}},\"character\":{{…}},\"pacing\":{{…}},\"continuity\":{{…}},\"foreshadow\":{{…}},\"hook\":{{…}},\"aesthetic\":{{…}}}}}}\n\n续写候选：\n{}",
             doc.content.chars().take(2000).collect::<String>()
         );
-        if let Ok(retry_raw) = call_llm(&state, "你是小说评审，只输出 JSON。", &retry_user).await {
+        if let Ok((retry_raw, _, _)) = call_llm_tracked(&state, &session.workspace_id, &pid, "guard", "你是小说评审，只输出 JSON。", &retry_user).await {
             if let Ok((_, rdims)) = parse_guard(&format!("[]\n{}", retry_raw)) {
                 if !rdims.is_empty() {
                     dims = rdims;
@@ -1492,10 +1609,77 @@ async fn accept_suggest(
         return map_core_err(e);
     }
     doc.status = "accepted".into();
-    doc.content = content;
+    doc.content = content.clone();
     let s = serde_json::to_string_pretty(&doc).unwrap_or_default();
     let _ = state.works.write_text(&session.workspace_id, &sg_path(&pid, &sg), &s);
-    Json(json!({"ok": true, "suggestion": doc, "chapterVersion": ch2.version_no})).into_response()
+    // P1 后验（吞噬 bishu-novel post-hoc OBS→ARB 压缩版，fail-open 不挡采纳）
+    let posthoc = run_posthoc(&state, &session.workspace_id, &pid, &doc.chapter_id, ch2.version_no, "", &content).await;
+    Json(json!({"ok": true, "suggestion": doc, "chapterVersion": ch2.version_no, "posthoc": posthoc})).into_response()
+}
+
+/// 后验审计路径
+fn posthoc_path(pid: &str, ch: &str, v: u32) -> String {
+    format!("projects/{pid}/posthoc/{ch}-v{v}.json")
+}
+
+const POSTHOC_SYS: &str = "你是小说后验裁决器。对比章节旧正文和刚采纳的新增内容，输出 JSON（只输出 JSON）：{\"newForeshadows\":[{\"title\":\"伏笔名\",\"description\":\"描述\"}],\"foreshadowRecall\":[{\"title\":\"疑似回收的旧伏笔\"}],\"debts\":[\"未决叙事债务\"],\"charNotes\":[\"人物状态变化\"]}。没有则给空数组。";
+
+/// 跑后验（fail-open，返回审计摘要；LLM 失败返回 {skipped}）。
+async fn run_posthoc(
+    state: &AppState,
+    ws: &str,
+    pid: &str,
+    ch: &str,
+    ver: u32,
+    old_text: &str,
+    new_text: &str,
+) -> Value {
+    let user = format!(
+        "旧正文（截断3000字）：\n{}\n\n新增内容：\n{}\n\n只输出 JSON。",
+        old_text.chars().take(3000).collect::<String>(),
+        new_text.chars().take(2000).collect::<String>()
+    );
+    let (raw, _, _) = match call_llm_tracked(state, ws, pid, "posthoc", POSTHOC_SYS, &user).await {
+        Ok(v) => v,
+        Err(e) => return json!({"skipped": true, "reason": e}),
+    };
+    let s = raw.trim();
+    let s = s
+        .strip_prefix("```json")
+        .or_else(|| s.strip_prefix("```"))
+        .unwrap_or(s)
+        .trim()
+        .trim_end_matches("```")
+        .trim();
+    let start = s.find('{').unwrap_or(0);
+    let end = s.rfind('}').map(|i| i + 1).unwrap_or(s.len());
+    let v: Value = serde_json::from_str(&s[start..end]).unwrap_or(json!({}));
+    // 新伏笔写回（work_id=pid 约定：改编 project 即 foreshadow work）
+    let mut planted = 0;
+    if let Some(arr) = v.get("newForeshadows").and_then(|x| x.as_array()) {
+        for f in arr {
+            let title = f.get("title").and_then(|x| x.as_str()).unwrap_or("").trim();
+            if title.is_empty() {
+                continue;
+            }
+            let desc = f.get("description").and_then(|x| x.as_str()).unwrap_or("").to_string();
+            if state.foreshadow.create_foreshadow(pid, title.to_string(), desc, "planted".into()).is_ok() {
+                planted += 1;
+            }
+        }
+    }
+    let audit = json!({
+        "chapterId": ch, "version": ver,
+        "newForeshadows": v.get("newForeshadows").cloned().unwrap_or(json!([])),
+        "foreshadowRecall": v.get("foreshadowRecall").cloned().unwrap_or(json!([])),
+        "debts": v.get("debts").cloned().unwrap_or(json!([])),
+        "charNotes": v.get("charNotes").cloned().unwrap_or(json!([])),
+        "planted": planted, "at": now(),
+    });
+    let s = serde_json::to_string_pretty(&audit).unwrap_or_default();
+    let _ = state.works.mkdir(ws, &format!("projects/{pid}/posthoc"));
+    let _ = state.works.write_text(ws, &posthoc_path(pid, ch, ver), &s);
+    audit
 }
 
 async fn reject_suggest(

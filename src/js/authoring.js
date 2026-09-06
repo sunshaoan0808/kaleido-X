@@ -1339,6 +1339,7 @@ async function sgAccept() {
   try {
     const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions/' + encodeURIComponent(sgSelected) + '/accept', { method: 'POST', body: '{}' });
     if (msg) msg.textContent = '已采纳（v' + (r.chapterVersion || '?') + '）';
+    sgShowPosthoc(r.posthoc || null);
     await sgRefreshList();
     await sgSelect(sgSelected);
     await sgRefreshChapters();
@@ -1356,12 +1357,35 @@ async function sgReject() {
   } catch (e) { if (msg) msg.textContent = e.message; }
 }
 
+async function sgShowLedger() {
+  if (!__az().azSelectedProjectId) return;
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/ledger');
+    const l = r.ledger || {}, tot = l.total || {}, by = l.byOp || {};
+    const el = $('sg-ledger');
+    if (el) el.textContent = '共 ' + (tot.calls || 0) + ' 次 / prompt ' + (tot.prompt || 0) + ' / completion ' + (tot.completion || 0) +
+      '（' + Object.keys(by).map((k) => k + '×' + (by[k].calls || 0)).join(' ') + '）';
+  } catch (e) { /* ignore */ }
+}
+
+function sgShowPosthoc(ph) {
+  const box = $('sg-posthoc');
+  if (!box) return;
+  if (!ph || ph.skipped) { box.innerHTML = '<span class="muted">后验跳过' + (ph && ph.reason ? '：' + escapeHtml(ph.reason) : '') + '</span>'; return; }
+  const nf = Array.isArray(ph.newForeshadows) ? ph.newForeshadows : [];
+  const db = Array.isArray(ph.debts) ? ph.debts : [];
+  box.innerHTML = '<div class="az-section-title">后验（采纳 v' + (ph.version || '?') + '，新伏笔 ' + (ph.planted || 0) + '）</div>' +
+    (nf.length ? nf.map((f) => '<div>🌱 ' + escapeHtml(f.title || '') + '</div>').join('') : '<div class="muted">无新伏笔</div>') +
+    (db.length ? db.map((d) => '<div>🧵 ' + escapeHtml(typeof d === 'string' ? d : JSON.stringify(d)) + '</div>').join('') : '');
+}
+
 function sgWire() {
-  const rc = $('sg-refresh'), nc = $('sg-new-chapter'), gs = $('sg-suggest'), sc = $('sg-chapter');
+  const rc = $('sg-refresh'), nc = $('sg-new-chapter'), gs = $('sg-suggest'), sc = $('sg-chapter'), lb = $('sg-ledger-btn');
   if (rc && !rc.__wired) { rc.__wired = 1; rc.onclick = sgRefreshChapters; }
   if (nc && !nc.__wired) { nc.__wired = 1; nc.onclick = sgNewChapter; }
   if (gs && !gs.__wired) { gs.__wired = 1; gs.onclick = sgGenSuggest; }
   if (sc && !sc.__wired) { sc.__wired = 1; sc.onchange = () => { sgSelectedChapter = sc.value; sgRefreshList(); }; }
+  if (lb && !lb.__wired) { lb.__wired = 1; lb.onclick = sgShowLedger; }
 }
 
 export { loadAuthorProjects, loadWorksTree, refreshPackSelect, loadWorksVersionsSidebar, sgRefreshChapters, sgWire };

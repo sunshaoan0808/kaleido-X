@@ -212,6 +212,15 @@ Go 长篇小说引擎（Engine+Arbiter+Workers，"事实层确定，语义层自
 | 章节文档实体 + CRUD | chapter(versionNo) | `suggest.rs` ChapterDoc + chapters 路由 |
 | 建议/守卫/采纳门禁 | `ai_suggestions/guard/accept` | suggest/guard/accept+reject（五道门全同款错误码） |
 
+### 18. DeterminFlow — [alikon-art/DeterminFlow](https://github.com/alikon-art/DeterminFlow)（AGPL-3.0，思路重实现，未搬代码）
+
+Python AI 工作流运行时（节点级账本/失败恢复，笔枢写作生产验证）。改编后验与账本。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 后验链（成稿后更新世界/角色/伏笔） | `bishu-novel/post-hoc` | `run_posthoc`（accept 后自动后验/伏笔写回/posthoc 审计） |
+| 节点级 Token 账本 | `token_usage.py` | ledger.json（总额+分环节）+ `GET .../ledger` |
+
 ---
 
 ## 一·五、评估过但未落地代码的候选（避免遗漏争议）
@@ -245,6 +254,7 @@ Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方�
 - humanizer-zh — https://github.com/op7418/humanizer-zh（MIT，去 AI 味词典+评分）
 - ainovel-cli — https://github.com/voocel/ainovel-cli（MIT，相关推荐/七维守卫/分诊/验收）
 - Scriverse — https://github.com/musnows/Scriverse（AGPL-3.0，思路重实现：建议/守卫/采纳门禁）
+- DeterminFlow — https://github.com/alikon-art/DeterminFlow（AGPL-3.0，思路重实现：改编后验/Token 账本）
 - denova — https://github.com/alfredxw/denova（导演台/规则检定/事件卡包/上下文管理）
 - xiami（虾米）— https://github.com/zhangxunvvv/xiami（剧情质检/大纲补丁/角色卡蒸馏）
 - tavern-card-distiller — https://github.com/leigegehaha/tavern-card-distiller（MIT，角色卡蒸馏输入管线）
