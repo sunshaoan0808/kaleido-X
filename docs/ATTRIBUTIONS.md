@@ -168,36 +168,49 @@ TS/Electron 桌面 AI Agent（589K 行，记忆/工具/沙盒/插件体系）。
 | 分类省略统计 | `core/lossy-local-compaction.ts`（OmissionCounts） | `memory_weaver.rs::serialize_for_summary_with_stats`：program/reasoning/empty/other/kept 分类统计 |
 | 修复循环接线 | memory reflection 侧任务模式 | `run_quality_refine` memory_patch 校验→修复重试；compact 端点场记校验→修复→降级 |
 
----
+### 14. Front Porch AI — [linux4life1/front-porch-AI](https://github.com/linux4life1/front-porch-AI)（AGPL-3.0，思路重实现，未搬代码）
 
-### 14. Front Porch AI — [linux4life1/front-porch-AI](https://github.com/linux4life1/front-porch-AI)（AGPL-3.0，重实现未搬代码）
-
-Flutter 本地优先角色扮演应用（Realism Engine 活人感引擎 + The Stoop 社区角色站）。P1→收口 + 全自动事件提取吞噬（2026-09-02→09-05）。
+Flutter 桌面端本地 LLM 角色聊天（Realism Engine/Pockets/Needs/Journal/Growth/Chaos）。P1→收口 12 提交全量重实现为 Rust 确定性纯核。
 
 | 吞噬功能 | 源模块 | Kaleido 落点 |
 |---|---|---|
-| 口袋/衣物/暂存堆 | `pockets.dart` 889行 | `pockets.rs` 732行 + 会话/播种/提示词/API/导演台 + À la carte 独立开关 |
-| Needs 六维 + 灾变 | `needs_simulation.dart` 692行 | `needs.rs` + auto-tick 衰减 + 提示词联动 |
-| Journal 物理/存量/召回 | `journal_physics/store/injection` | `journal_physics.rs` + `journal_store.rs`（heat/冷卡召回/物品卡） |
-| 成长年轮 + 物理阈值 | `growth_service` | `character_arc.rs` GrowthRing/GrowthStore + tier/注入选择 |
-| 世界气候 | `world.dart` atmosphere/gravity | `world_climate.rs` + 提示词守卫 |
-| Chaos/Chance Time | `chaos_mode_service` | `chaos.rs` + auto-tick 压力 |
-| 羁绊/里程碑/目标/夜梦 | `relationship/objective/dream` | `relationship.rs` + `objectives.rs` + `dreams.rs` + 承诺债务 `promise.rs` |
-| 心情基线/在场/场景渐隐/偏好 | `mood_baseline/presence/scenario/preference` | `mood_presence.rs` + prompt 加权 |
-| 定时效应 sticky/cooldown | `lorebook_timed_effects` | `st_world_info.rs` 酒馆链路 + pill |
-| 全自动事件提取 | （自研，Front Porch 无对应） | 回合末后台 LLM 直写 + remerge/CAS + resolve_cid |
-
----
+| 口袋/衣物/暂存堆 + À la carte 开关 | `pockets.dart` | `pockets.rs` + pockets_enabled + 口袋 tab |
+| Needs 六维 + 灾变 | `needs_simulation.dart` | `needs.rs` + auto-tick |
+| Journal 物理/存量/冷卡召回 | `journal_physics/store` | `journal_physics.rs`/`journal_store.rs` |
+| 成长年轮/情感物理 | `growth/journal` | `character_arc.rs` GrowthStore |
+| Chaos/目标/夜梦/羁绊/承诺/心情/在场 | `chaos/objectives/dreams/relationship` | `chaos.rs`/`objectives.rs`/`dreams.rs`/`relationship.rs`/`promise.rs`/`mood_presence.rs` |
+| 全自动事件提取 | `pockets_eval/realism_evals` 思路 | 后台 LLM 直写 pockets/promises/growth/journal |
+| 世界书定时/Swipe/Storyline/分叉 | `lorebook_timed/Our Story/fork` | timed_world_info/pending_swipes/storyline/fork_save |
 
 ### 15. humanizer-zh — [op7418/humanizer-zh](https://github.com/op7418/humanizer-zh)（MIT）
 
-Claude Code Skill（484 行规则文档，零代码；上游 `blader/humanizer` + `hardikpandya/stop-slop` + 维基 `Signs of AI writing`）。H1-H6 吞噬（2026-09-05）：24 类 AI 痕迹转写为中文确定性检测 + 5 维 50 分制评分。
+Claude Code Skill（24 类 AI 味+5 维评分，纯 prompt）。H1-H6 全量 Rust 确定性实现。
 
 | 吞噬功能 | 源模块 | Kaleido 落点 |
 |---|---|---|
-| 24 类去 AI 味模式（AI 词/否定排比/三段式/破折号/填充/协作痕迹等） | `SKILL.md` 核心规则速查 | `humanize.rs` 词表 + 结构检测 + `analyze` |
-| 5 维质量评分（直接性/节奏/信任度/真实性/精炼度 50 分制） | `SKILL.md` 质量评分 | `HumanizeReport` 确定性打分 + `grade` |
-| 处理流程/检查清单 | `SKILL.md` 快速检查清单 | H4 提示词硬约束 + H6 审稿 blocker + H5 破折号硬修 |
+| 24 类去痕词典 + 5 维 50 分制 | `SKILL.md` | `humanize.rs` + TurnDiagnostic + 导演台 ✍️ |
+| 破折号硬修 + 审稿 blocker | H5/H6 口径 | 后处理 + QUALITY_REVIEW_SYS |
+
+### 16. ainovel-cli — [voocel/ainovel-cli](https://github.com/voocel/ainovel-cli)（MIT）
+
+Go 长篇小说引擎（Engine+Arbiter+Workers，"事实层确定，语义层自主"）。书架改编三件套增强全批。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 相关章节推荐（四维 top5） | `novel_context.go` | `related_chapters` + suggest/guard 对照物 |
+| 举证制/七维打标/审美铁律/节奏 | `review.go`/`editor.md` | GUARD_SYS + DimensionScore + 双打标 |
+| 伏笔账龄/全书 stats | `foreshadow/style_stats` 口径 | 守卫注入 + `/stats` |
+| 干预分诊/写作规则/返工入队 | `arbiter-intervention/user_rules` | triage/rules/批量 suggest |
+| 逐章验收/卷弧分组 | `AdvanceMode/Volume→Arc` | advance/permit/arcs |
+
+### 17. Scriverse — [musnows/Scriverse](https://github.com/musnows/Scriverse)（AGPL-3.0，思路重实现，未搬代码）
+
+本地 AI 长篇工作台（建议/守卫/采纳门禁）。书架改编 A1+A2 原样搬口径。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 章节文档实体 + CRUD | chapter(versionNo) | `suggest.rs` ChapterDoc + chapters 路由 |
+| 建议/守卫/采纳门禁 | `ai_suggestions/guard/accept` | suggest/guard/accept+reject（五道门全同款错误码） |
 
 ---
 
@@ -228,6 +241,10 @@ Claude Code Skill（484 行规则文档，零代码；上游 `blader/humanizer` 
 Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方法论），特此致谢：
 
 - Liyuan（梨园）— https://github.com/weidu12123/Liyuan（场记摘要/世界线/可视化面板/剧情助手等）
+- Front Porch AI — https://github.com/linux4life1/front-porch-AI（AGPL-3.0，思路重实现：口袋/Needs/Journal/成长/事件提取等）
+- humanizer-zh — https://github.com/op7418/humanizer-zh（MIT，去 AI 味词典+评分）
+- ainovel-cli — https://github.com/voocel/ainovel-cli（MIT，相关推荐/七维守卫/分诊/验收）
+- Scriverse — https://github.com/musnows/Scriverse（AGPL-3.0，思路重实现：建议/守卫/采纳门禁）
 - denova — https://github.com/alfredxw/denova（导演台/规则检定/事件卡包/上下文管理）
 - xiami（虾米）— https://github.com/zhangxunvvv/xiami（剧情质检/大纲补丁/角色卡蒸馏）
 - tavern-card-distiller — https://github.com/leigegehaha/tavern-card-distiller（MIT，角色卡蒸馏输入管线）
@@ -239,8 +256,6 @@ Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方�
 - Openwrite — https://github.com/LiPu-jpg/Openwrite（长文本语义切块/图像消费）
 - 叙界 — 本地姊妹项目 kaleido-xujie（生成后多维守卫/情绪枚举/立绘渲染）
 - Legado（阅读）— https://github.com/gedoor/legado（Big5/GB18030 编码识别/目录切分）
-- Front Porch AI — https://github.com/linux4life1/front-porch-AI（AGPL-3.0，思路重实现：口袋/Needs/Journal/羁绊/事件提取等活人感系统）
-- humanizer-zh — https://github.com/op7418/humanizer-zh（MIT：24 类去 AI 味模式 + 5 维评分，转写为 Rust 确定性检测）
 - OpenHanako（HanaAgent）— https://github.com/liliMozi/openhanako（记忆输出契约/修复循环/省略统计）
 
 UI/交互设计参考：Agnai、Omate、RisuAI、SillyTavern 及其生态。
