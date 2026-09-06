@@ -538,6 +538,7 @@
             <button type="button" data-azview="scene-cards"><span class="az-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></span><span class="az-nav-label">场记</span></button>
             <button type="button" data-azview="analysis"><span class="az-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/><path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"/><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></svg></span><span class="az-nav-label">AI分析</span></button>
             <button type="button" data-azview="dual-agent"><span class="az-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M6 9v6"/><path d="M18 9a4 4 0 0 1-4 4H9"/></svg></span><span class="az-nav-label">双Agent</span></button>
+            <button type="button" data-azview="suggest"><span class="az-nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span><span class="az-nav-label">改编</span></button>
           </nav>
           <div class="az-workspace">
             <div id="az-view-compose" class="az-view hidden">
@@ -978,6 +979,26 @@
                     <div id="da-planview" style="padding:12px;overflow:auto;max-height:100%"></div>
                   </aside>
                 </div>
+              </div>
+            </div>
+            <div id="az-view-suggest" class="az-view hidden">
+              <div class="az-view-header">
+                <h2>改编</h2>
+                <p class="muted sm">章节续写建议 → 一致性守卫 → 采纳门禁（Scriverse 三件套）</p>
+              </div>
+              <div class="az-desk">
+                <div class="row gap-sm" style="margin-bottom:8px">
+                  <select id="sg-chapter" class="sm" style="min-width:160px"></select>
+                  <button type="button" id="sg-refresh" class="ghost sm">刷新章节</button>
+                  <button type="button" id="sg-new-chapter" class="ghost sm">新建章节</button>
+                </div>
+                <div class="row gap-sm" style="margin-bottom:8px">
+                  <input id="sg-instruction" placeholder="续写指令，如：让林晚出场" style="flex:1" />
+                  <button type="button" id="sg-suggest" class="sm">生成建议</button>
+                </div>
+                <div id="sg-list" class="az-list"></div>
+                <div id="sg-detail" style="margin-top:8px"></div>
+                <p id="sg-msg" class="muted sm"></p>
               </div>
             </div>
             <div id="az-view-foreshadow" class="az-view hidden">

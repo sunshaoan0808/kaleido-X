@@ -13,8 +13,8 @@ import { uid as _uid, displayTitle } from './utils.js';
 import { stStatus, stGoBack, stSwitchView, stDisplayTitle, stHasOpenOverlay,
   stBindImmChrome, stRefresh, stLoadPacks, stLoadSessions, stLoadSaves,
   stLoadSession, stRefreshCharSummary, stRenderContinueCard, renderHomeRecent,
-  loadBookshelf } from './tavern.js';
-import { refreshSessions, showChatSetup } from './chat.js';
+  loadBookshelf, stCurrentSession } from './tavern.js';
+import { refreshSessions, showChatSetup, refreshAdventureSelects, refreshStorySelects } from './chat.js';
 import { loadSettings } from './settings.js';
 import { showMain } from './api_shell.js';
 import { refreshJobs } from './jobs.js';
@@ -113,7 +113,7 @@ const __s8 = () => window.__kaleidoStoryState;
     storytavern: 'tavern',
     author: 'works',
   };
-  let currentTab = 'home';
+  export let currentTab = 'home';
   // S8.28: author zone sub-view
   let azLastView = localStorage.getItem('kaleido_az_lastview') || 'compose';
   let suppressHashWrite = false;
@@ -413,7 +413,7 @@ const __s8 = () => window.__kaleidoStoryState;
           const raw = active && (active.textContent || '').trim();
           if (raw) chatTitle = displayTitle(raw, '对话');
         } catch (_) {}
-        enterImmersive(chatTitle + (__c7().messages.length ? ' · ' + messages.length + ' 条' : ''), { showSessions: true, noAutoHide: true });
+        enterImmersive(chatTitle + (__c7().messages.length ? ' · ' + __c7().messages.length + ' 条' : ''), { showSessions: true, noAutoHide: true });
         return;
       }
     } else if (currentTab === 'story' || currentTab === 'adventure') {
@@ -701,6 +701,11 @@ const __s8 = () => window.__kaleidoStoryState;
     if (name === 'compose') {
       loadAuthorProjects().catch(console.warn);
       loadPartner().catch(console.warn);
+    }
+    if (name === 'suggest') {
+      loadAuthorProjects().catch(console.warn);
+      if (typeof sgRefreshChapters === 'function') sgRefreshChapters().catch(console.warn);
+      if (typeof sgWire === 'function') { try { sgWire(); } catch (_) {} }
     }
     // 关系图/伏笔/AI分析 进面板自动加载（2026-08-10: 之前从不自动调用，
     // 用户进面板永远是空白 canvas，必须手动点刷新——前端"什么都没有"根因）
@@ -1059,6 +1064,9 @@ const __s8 = () => window.__kaleidoStoryState;
       closeSessionDrawer,
       get currentTab() { return currentTab; },
       set currentTab(v) { currentTab = v; },
+      // S2.20: tavern.js __curTab() (and any legacy caller) reads the current
+      // tab through this accessor — facade must expose it as a FUNCTION.
+      getCurrentTab: () => currentTab,
       // S2.10: tavern-core stPinViewHash/popstate write this from the real module
       get suppressHashWrite() { return suppressHashWrite; },
       setSuppressHashWrite(v) { suppressHashWrite = v; },

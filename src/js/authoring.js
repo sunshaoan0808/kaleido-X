@@ -1212,4 +1212,156 @@ try {
   };
 } catch (_) {}
 
-export { loadAuthorProjects, loadWorksTree, refreshPackSelect, loadWorksVersionsSidebar };
+
+/* A2: 改编三件套（章节建议 → 守卫 → 采纳/驳回） */
+let sgChapters = [];
+let sgSelectedChapter = '';
+let sgList = [];
+let sgSelected = null;
+
+async function sgRefreshChapters() {
+  const msg = $('sg-msg');
+  if (!__az().azSelectedProjectId) { if (msg) msg.textContent = '先选项目'; return; }
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/chapters');
+    sgChapters = Array.isArray(r.chapters) ? r.chapters : [];
+    const sel = $('sg-chapter');
+    if (sel) {
+      sel.innerHTML = '';
+      for (const c of sgChapters) {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = (c.title || c.id) + ' (v' + c.versionNo + ')';
+        sel.appendChild(o);
+      }
+      if (sgChapters.length) { sgSelectedChapter = sgChapters[0].id; sel.value = sgSelectedChapter; }
+    }
+    if (msg) msg.textContent = sgChapters.length + ' 个章节';
+    await sgRefreshList();
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+
+async function sgNewChapter() {
+  if (!__az().azSelectedProjectId) return;
+  const title = await showPrompt('章节标题', '新章节');
+  if (title === null) return;
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/chapters', {
+      method: 'POST', body: JSON.stringify({ title: title || '新章节', content: '' }),
+    });
+    await sgRefreshChapters();
+    if (r.chapter) { sgSelectedChapter = r.chapter.id; const sel = $('sg-chapter'); if (sel) sel.value = sgSelectedChapter; }
+  } catch (e) { const msg = $('sg-msg'); if (msg) msg.textContent = e.message; }
+}
+
+async function sgGenSuggest() {
+  const msg = $('sg-msg');
+  if (!__az().azSelectedProjectId || !sgSelectedChapter) { if (msg) msg.textContent = '先选章节'; return; }
+  const ins = $('sg-instruction');
+  if (msg) msg.textContent = '生成中…';
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/chapters/' + encodeURIComponent(sgSelectedChapter) + '/suggest', {
+      method: 'POST', body: JSON.stringify({ taskType: 'continue', action: 'append', instruction: ins ? ins.value : '' }),
+    });
+    if (msg) msg.textContent = '建议已生成';
+    await sgRefreshList();
+    if (r.suggestion) sgSelect(r.suggestion.id);
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+
+async function sgRefreshList() {
+  if (!__az().azSelectedProjectId) return;
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions');
+    sgList = Array.isArray(r.suggestions) ? r.suggestions : [];
+    const box = $('sg-list');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!sgList.length) box.innerHTML = '<div class="az-empty">暂无建议</div>';
+    for (const s of sgList) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'az-card' + (sgSelected === s.id ? ' selected' : '');
+      el.innerHTML = '<span class="az-name"></span><span class="az-kpi"></span>';
+      el.querySelector('.az-name').textContent = (s.taskType || '') + ' · ' + (s.chapterId || '') + ' · ' + (s.status || '');
+      el.querySelector('.az-kpi').textContent = (s.createdAt || '').slice(5, 16);
+      el.onclick = () => sgSelect(s.id);
+      box.appendChild(el);
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function sgSelect(id) {
+  sgSelected = id;
+  sgRefreshList();
+  const box = $('sg-detail');
+  if (!box || !__az().azSelectedProjectId) return;
+  box.innerHTML = '加载中…';
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions/' + encodeURIComponent(id));
+    const s = r.suggestion || {};
+    const g = r.guard || null;
+    let guardHtml = '<div class="muted sm">未运行守卫</div>';
+    if (g) {
+      const issues = Array.isArray(g.issues) ? g.issues : [];
+      guardHtml = '<div class="sm">守卫：<b>' + escapeHtml(g.status || '') + '</b>（' + issues.length + ' 项）</div>' +
+        issues.map((it) => '<div class="sm">[' + escapeHtml(it.severity || '') + '/' + escapeHtml(it.type || '') + '] ' + escapeHtml(it.title || '') + '</div>').join('');
+    }
+    box.innerHTML =
+      '<div class="az-section"><div class="az-section-title">候选正文（v' + (s.chapterVersion || '?') + '）</div>' +
+      '<pre class="sm" style="white-space:pre-wrap;max-height:240px;overflow:auto"></pre></div>' +
+      '<div class="az-section"><div class="az-section-title">守卫</div><div id="sg-guard">' + guardHtml + '</div></div>' +
+      '<div class="row gap-sm"><button type="button" id="sg-guard-btn" class="ghost sm">运行守卫</button>' +
+      '<button type="button" id="sg-accept-btn" class="sm">采纳</button>' +
+      '<button type="button" id="sg-reject-btn" class="ghost sm">驳回</button></div>';
+    box.querySelector('pre').textContent = s.content || '';
+    const gb = $('sg-guard-btn'), ab = $('sg-accept-btn'), rb = $('sg-reject-btn');
+    if (gb) gb.onclick = sgRunGuard;
+    if (ab) ab.onclick = sgAccept;
+    if (rb) rb.onclick = sgReject;
+  } catch (e) { box.innerHTML = '<div class="muted sm">' + escapeHtml(e.message) + '</div>'; }
+}
+
+async function sgRunGuard() {
+  if (!__az().azSelectedProjectId || !sgSelected) return;
+  const msg = $('sg-msg');
+  if (msg) msg.textContent = '守卫检查中…';
+  try {
+    await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions/' + encodeURIComponent(sgSelected) + '/guard', { method: 'POST' });
+    if (msg) msg.textContent = '守卫完成';
+    await sgSelect(sgSelected);
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+
+async function sgAccept() {
+  if (!__az().azSelectedProjectId || !sgSelected) return;
+  const msg = $('sg-msg');
+  try {
+    const r = await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions/' + encodeURIComponent(sgSelected) + '/accept', { method: 'POST', body: '{}' });
+    if (msg) msg.textContent = '已采纳（v' + (r.chapterVersion || '?') + '）';
+    await sgRefreshList();
+    await sgSelect(sgSelected);
+    await sgRefreshChapters();
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+
+async function sgReject() {
+  if (!__az().azSelectedProjectId || !sgSelected) return;
+  const msg = $('sg-msg');
+  try {
+    await api('/api/v1/author/projects/' + encodeURIComponent(__az().azSelectedProjectId) + '/suggestions/' + encodeURIComponent(sgSelected) + '/reject', { method: 'POST' });
+    if (msg) msg.textContent = '已驳回';
+    await sgRefreshList();
+    await sgSelect(sgSelected);
+  } catch (e) { if (msg) msg.textContent = e.message; }
+}
+
+function sgWire() {
+  const rc = $('sg-refresh'), nc = $('sg-new-chapter'), gs = $('sg-suggest'), sc = $('sg-chapter');
+  if (rc && !rc.__wired) { rc.__wired = 1; rc.onclick = sgRefreshChapters; }
+  if (nc && !nc.__wired) { nc.__wired = 1; nc.onclick = sgNewChapter; }
+  if (gs && !gs.__wired) { gs.__wired = 1; gs.onclick = sgGenSuggest; }
+  if (sc && !sc.__wired) { sc.__wired = 1; sc.onchange = () => { sgSelectedChapter = sc.value; sgRefreshList(); }; }
+}
+
+export { loadAuthorProjects, loadWorksTree, refreshPackSelect, loadWorksVersionsSidebar, sgRefreshChapters, sgWire };

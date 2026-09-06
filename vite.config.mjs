@@ -68,10 +68,10 @@ function appPartsVirtual() {
         'import { loadPartner } from "./partner.js";',
         // S2.17: authoring (works+author) as real ESM — tabs' guarded calls
         // become always-true; escapeHtml consumers inside _tabs keep closure binding
-        'import { loadAuthorProjects, loadWorksTree, refreshPackSelect, loadWorksVersionsSidebar } from "./authoring.js";',
+        'import { loadAuthorProjects, loadWorksTree, refreshPackSelect, loadWorksVersionsSidebar, sgRefreshChapters, sgWire } from "./authoring.js";',
         'import { friendlyError, apiBase, showLogin, showMain } from "./api_shell.js";',
         'import { getActiveStRegexScripts, compileStFindRegex, applyStRegexScripts } from "./st_regex.js";',
-        'import { _bindPartner as __bp } from "./st_regex.js"; __bp(() => partner);',
+        'import { _bindPartner as __bp } from "./st_regex.js"; __bp(() => (window.__kaleidoChatState ? window.__kaleidoChatState.partner : null));',
         'import { wireListSearch, openGlobalSearch, closeGlobalSearch } from "./search.js";',
         'import { loadSettings, loadStylePresets } from "./settings.js";',
         'import { renderMessages, refreshSessions, showChatSetup, setupChatStart, ensureSession, saveSession, closeEs, setStreaming, scheduleChatStreamPaint, cssEscape, buildBubbleEl, fillBubbleBody, ensureBubbleDom, refreshPartnerSelects, refreshStorySelects, refreshAdventureSelects, sendMessage, stopStream } from "./chat.js";',
@@ -80,10 +80,23 @@ function appPartsVirtual() {
         'import { api as _apiReal, setApiBase as _setApiBaseReal, getSseTicket as _getSseTicketReal } from "./api.js";',
         'const api = _apiReal, setApiBase = _setApiBaseReal, getSseTicket = _getSseTicketReal;',
       ];
-      // S2.19: parts.json retired — no IIFE body remains; the virtual module
-      // resolves to just the import preamble (kept for api_shell re-export
-      // compatibility until its consumers migrate off it).
-      const body = '';
+      // S2.19: parts.json retired — the IIFE body is empty EXCEPT for a
+      // keep-alive consumer: rollup tree-shakes imported bindings that have
+      // no consumer (the empty IIFE referenced none), which deleted `$`,
+      // `_tryApi`, `stopBtn`, DEFAULT_APPEARANCE etc. that closure-hoisted
+      // part code still relies on. Referencing every local binding in the
+      // body keeps them all alive (S2.20 build fix).
+      const keepNames = [];
+      for (const line of converted) {
+        const m = line.match(/import\s*\{([^}]*)\}\s*from\s*["']/);
+        if (!m) continue;
+        for (const part of m[1].split(',')) {
+          const name = part.trim().split(/\s+as\s+/).pop();
+          if (name) keepNames.push(name);
+        }
+      }
+      const unique = [...new Set(keepNames)];
+      const body = `globalThis.__appParts={${unique.join(',')}};`;
       return `${imports}\n${converted.join('\n')}\n(function () {\n${body}\n})();\n`;
     },
   };

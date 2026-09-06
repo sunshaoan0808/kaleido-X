@@ -110,6 +110,7 @@ mod panels;
 mod appearance;
 // Author Zone AZ-1
 mod author;
+mod suggest;
 // U12: 双 Agent 分工与工作流（Goethe 规划 → Dante 写作）
 mod dual_agent;
 mod embed_local;
@@ -455,6 +456,8 @@ async fn main() -> anyhow::Result<()> {
         .merge(style_presets::router())
         // Author Zone AZ-1
         .merge(author::router())
+        .merge(suggest::router())
+        .merge(suggest::suggest_router())
                 .route("/api/v1/embeddings", post(embeddings_openai))
         // 生图 + TTS 工具（uniapi cogview-4 / edge-tts）
         .route("/api/v1/kaleido-tools/image", post(crate::kaleido_tools::generate_image))
