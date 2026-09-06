@@ -597,8 +597,17 @@ async function stStageRender() {
       out += stStageSec('🎛 导演台', pending ? '待执行' : (plan.goal ? '运行中' : '空闲'), h);
     }
     // H3 (吞噬 humanizer-zh): 去 AI 味评分展示（lastTurnDiagnostic 直带）
+    // 声线漂移：voice_drift_score ≥ 0.6 显示（确定性指纹比对，零 LLM）
     try {
       const dg = tavernSession.lastTurnDiagnostic || tavernSession.last_turn_diagnostic || null;
+      const vd = dg ? (dg.voiceDriftScore || dg.voice_drift_score || 0) : 0;
+      if (vd >= 0.25) {
+        const vc = dg.voiceDriftChar || dg.voice_drift_char || '';
+        const vr = dg.voiceDriftReasons || dg.voice_drift_reasons || [];
+        out += stStageSec('🎭 声线', (vc || '某角色') + ' 漂移 ' + Math.round(vd * 100) + '%',
+          '<div class="st-stage-row"><b>角色</b><span>' + stStageVal(vc) +
+          '</span><b>原因</b><span>' + stStageVal(Array.isArray(vr) ? vr.join('；') : vr) + '</span></div>');
+      }
       if (dg && dg.humanizeTotal) {
         const col = dg.humanizeTotal >= 45 ? '#7CFC98' : (dg.humanizeTotal >= 35 ? '#ffd166' : '#ff6b6b');
         out += stStageSec('✍️ 去 AI 味', dg.humanizeTotal + '/50 ' + (dg.humanizeGrade || ''),

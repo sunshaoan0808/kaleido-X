@@ -420,6 +420,109 @@ mod tests {
     }
 }
 
+/// 回合声线检测：正文按“角色名：/：”切出台词 → per 角色 drift_check → 取最高分。
+/// names：角色名 + id（双口径）。返回 (character_id, DriftReport)（无台词/无指纹则 None）。
+pub fn check_turn_voices(
+    fps: &[CharacterFingerprint],
+    names: &[(String, String)],
+    text: &str,
+) -> Option<(String, DriftReport)> {
+    let mut best: Option<(String, DriftReport)> = None;
+    for (cid, name) in names {
+        let nm = name.trim();
+        if nm.is_empty() { continue; }
+        // 角色名出现门：出现 ≥2 次才算（场景标签那 1 次不算数，
+        // 防“只在场景标签出现”被算漂移，如 turn 34 沈棠）
+        if text.matches(nm).count() < 2 { continue; }
+        // 切出台词：按 “名：”/“名:”/“「” 分段
+        let mut lines: Vec<String> = Vec::new();
+        for sep in [format!("{}：", name), format!("{}:", name)] {
+            let mut rest = text;
+            while let Some(pos) = rest.find(sep.as_str()) {
+                let after = &rest[pos + sep.len()..];
+                // 取到行尾/下一段
+                let end = after.find('\n').unwrap_or(after.len());
+                let line = after[..end].trim().to_string();
+                if line.chars().count() >= 2 {
+                    lines.push(line);
+                }
+                rest = &after[end.min(after.len())..];
+                if rest.is_empty() { break; }
+            }
+        }
+        let fp = match fps.iter().find(|f| f.character_id == *cid || f.name == *name) {
+            Some(f) => f,
+            None => continue,
+        };
+        if fp.sample_count == 0 { continue; }
+        // 整段回退：无显式“名：”前缀时（叙事体正文），直接整段比对
+        // （口头禅/语气词/句长分布仍有信号；归因精度低于切分，阈值侧已用 0.6 过滤）
+        let joined = if lines.is_empty() { text.to_string() } else { lines.join("\n") };
+        let rep = drift_check(fp, &joined);
+        let replace = match &best {
+            None => true,
+            Some((_, b)) => rep.drift_score > b.drift_score,
+        };
+        if replace {
+            best = Some((cid.clone(), rep));
+        }
+    }
+    best
+}
+
+#[cfg(test)]
+mod turn_voices_tests {
+    use super::*;
+    use serde_json::json;
+    fn fp_pack() -> crate::StoryPack {
+        let c: PackCharacterRef = serde_json::from_value(json!({
+            "id": "c1", "name": "沈棠", "role": "NPC",
+            "exampleDialogs": ["我在这儿住了十年了。", "罢了，你若执意要去，我也不拦你。", "今夜风大，早些歇息吧。"],
+            "boundaries": ["自称陛下"], "speechStyle": "短句"
+        })).unwrap();
+        let pack_json = json!({"id": "p", "title": "t", "characters": []});
+        let mut pack: crate::StoryPack = serde_json::from_value(pack_json).unwrap();
+        pack.characters = vec![c];
+        pack
+    }
+    #[test]
+    fn turn_voices_consistent_low() {
+        let pack = fp_pack();
+        let fps = build_all(&pack);
+        let names = vec![("c1".into(), "沈棠".into())];
+        let text = "沈棠：罢了，你若非去不可，我也不拦你。\n沈棠：今夜风大，早些歇息吧。";
+        let r = check_turn_voices(&fps, &names, text).unwrap();
+        assert!(r.1.drift_score < 0.6, "score={}", r.1.drift_score);
+    }
+    #[test]
+    fn turn_voices_boundary_high() {
+        let pack = fp_pack();
+        let fps = build_all(&pack);
+        let names = vec![("c1".into(), "沈棠".into())];
+        let text = "沈棠：孤已派人查过，此事与尔等无关。退下吧。沈棠转身离去。";
+        let r = check_turn_voices(&fps, &names, text).unwrap();
+        assert!(!r.1.boundary_hits.is_empty());
+        assert!(r.1.drift_score > 0.1, "score={}", r.1.drift_score);
+    }
+    #[test]
+    fn turn_voices_name_gate() {
+        // 角色名出现门：正文无角色名 → None（防整段污染）
+        let pack = fp_pack();
+        let fps = build_all(&pack);
+        let names = vec![("c1".into(), "沈棠".into())];
+        assert!(check_turn_voices(&fps, &names, "雨很大，巷子很深，无人说话。").is_none());
+    }
+    #[test]
+    fn turn_voices_whole_fallback() {
+        // 整段回退：有角色名但无显式前缀 → 整段比对，有信号
+        let pack = fp_pack();
+        let fps = build_all(&pack);
+        let names = vec![("c1".into(), "沈棠".into())];
+        let r = check_turn_voices(&fps, &names, "沈棠站在雨中，久久没有说话。沈棠抬起头。");
+        assert!(r.is_some());
+    }
+}
+
 /// 供 server 层调用：一次生成多角色指纹（含空角色卡占位）。
 pub fn build_all(pack: &crate::StoryPack) -> Vec<CharacterFingerprint> {
     pack.characters.iter().map(build_fingerprint).collect()

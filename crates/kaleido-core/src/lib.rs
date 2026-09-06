@@ -252,7 +252,7 @@ pub use st_world_info::{
 pub use st_timed_store::TimedWorldInfoStore;
 pub use st_automation_log::{AutomationTriggerEvent, AutomationTriggerLog, AutomationTriggerStore};
 pub use st_compass::{Compass, CompassStore, COMPASS_FILE_NAME, COMPASS_MAX_LEN, COMPASS_SCHEMA_VERSION};
-pub use dialogue_fingerprint::{build_all, build_fingerprint, drift_check, CharacterFingerprint, DriftReport};
+pub use dialogue_fingerprint::{build_all, build_fingerprint, check_turn_voices, drift_check, CharacterFingerprint, DriftReport};
 pub use st_review::{
     run_post_check, PostIssue, ReviewHistory, ReviewIssue, ReviewRun, ReviewStore,
     REVIEW_DIMENSIONS, REVIEW_FILE_NAME, REVIEW_MAX_RUNS, REVIEW_SCHEMA_VERSION,

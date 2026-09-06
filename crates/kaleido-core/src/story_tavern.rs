@@ -2615,6 +2615,15 @@ pub struct TurnDiagnostic {
     /// 去 AI 味命中数。
     #[serde(default)]
     pub humanize_hits: usize,
+    /// 声线漂移分 [0,1]（0 = 未跑/无台词）。
+    #[serde(default)]
+    pub voice_drift_score: f64,
+    /// 声线漂移角色 id（空 = 无漂移）。
+    #[serde(default)]
+    pub voice_drift_char: String,
+    /// 声线漂移原因（中文）。
+    #[serde(default)]
+    pub voice_drift_reasons: Vec<String>,
 }
 
 fn default_timeline() -> String {

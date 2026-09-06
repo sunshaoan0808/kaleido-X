@@ -9264,6 +9264,19 @@ async fn start_turn(
                             if exhausted { &[] } else { &chapter_goals },
                             roster_names.as_deref(),
                         );
+                        // [声线漂移] 回合诊断 vd_score ≥ 0.6 → med 记录（只记录不阻断）
+                        if let Some(dg) = sess.last_turn_diagnostic.as_ref() {
+                            if dg.voice_drift_score >= 0.25 && !dg.voice_drift_char.is_empty() {
+                                vs.push(GuardViolation {
+                                    severity: GuardSeverity::Medium,
+                                    dim: "声线",
+                                    msg: format!("声线漂移「{}」（{:.0}%）：{}",
+                                        dg.voice_drift_char,
+                                        dg.voice_drift_score * 100.0,
+                                        dg.voice_drift_reasons.join("；")),
+                                });
+                            }
+                        }
                         // [双持检测] 同一物品在两个角色口袋 = 吃书（turn 17 银锁双持实踩）
                         {
                             let mut seen: std::collections::HashMap<String, String> = std::collections::HashMap::new();
@@ -9653,6 +9666,19 @@ async fn start_turn(
                     // G10 (吞噬 denova D1): 回合正常完成 → 写入诊断摘要（accepted=true）。
                     // H3 (吞噬 humanizer-zh): 去 AI 味确定性检测（纯核，无 LLM）。
                     let hz = kaleido_core::humanize::analyze(&full_text);
+                    // 声线漂移确定性检测（纯核，无 LLM）：正文按角色名切台词 → 指纹比对。
+                    let (vd_score, vd_char, vd_reasons) = (|| {
+                        let pack = state.packs.get(&sess.pack_id).ok()?;
+                        let fps = kaleido_core::build_all(&pack);
+                        let names: Vec<(String, String)> = pack.characters.iter()
+                            .map(|c| (c.id.clone(), c.name.clone())).collect();
+                        let (cid, rep) = kaleido_core::check_turn_voices(&fps, &names, &full_text)?;
+                        Some((rep.drift_score, cid, rep.reasons.clone()))
+                    })()
+                    .unwrap_or((0.0, String::new(), Vec::new()));
+                    if vd_score >= 0.25 {
+                        tracing::info!(score = vd_score, char = %vd_char, "st voice: 声线漂移");
+                    }
                     sess.last_turn_diagnostic = Some(kaleido_core::TurnDiagnostic {
                         turn: sess.turn,
                         accepted: true,
@@ -9661,6 +9687,9 @@ async fn start_turn(
                         humanize_total: hz.total,
                         humanize_grade: hz.grade().into(),
                         humanize_hits: hz.hits.len(),
+                        voice_drift_score: vd_score,
+                        voice_drift_char: vd_char,
+                        voice_drift_reasons: vd_reasons,
                     });
                 }
 
@@ -10114,6 +10143,9 @@ async fn stop_turn(
             humanize_total: 0,
             humanize_grade: String::new(),
             humanize_hits: 0,
+            voice_drift_score: 0.0,
+            voice_drift_char: String::new(),
+            voice_drift_reasons: Vec::new(),
         });
         tracing::info!(%session_id, run_id = %body.run_id, turn, duration_ms, "st turn stopped (diagnostic recorded)");
         if let Err(e) = state.sessions_tavern.save(sess) {
