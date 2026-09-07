@@ -221,6 +221,18 @@ Python AI 工作流运行时（节点级账本/失败恢复，笔枢写作生产
 | 后验链（成稿后更新世界/角色/伏笔） | `bishu-novel/post-hoc` | `run_posthoc`（accept 后自动后验/伏笔写回/posthoc 审计） |
 | 节点级 Token 账本 | `token_usage.py` | ledger.json（总额+分环节）+ `GET .../ledger` |
 
+### 19. loreweaver — [1A7432/loreweaver](https://github.com/1A7432/loreweaver)（MIT）
+
+Python 自托管 AI 桌游主持人（"AI 讲故事，代码管分数"：骰子/规则/人物卡全由代码裁决）。吞噬第一梯队①②③+第二梯队④⑤。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 骰子伪造/矛盾/过期 HUD 三检 | `turn_checks.py` | `dice_audit.rs`（CJK+阿拉伯归一/Stop 形态拒收）+ TurnDiagnostic + 守卫 med + 导演台 🎲 |
+| Chronicle 折叠（水位线+undo 禁跨折） | `chronicle.py`/`undo.py` | `fold_through_turn` 水位 + checkpoint 回退禁跨水位 |
+| Scribe 低语（该不该骰由读虚构者报） | `scribe.py` | 事件提取 checks 落盘→下回合 prompt 建议→用完即清（KP 自由采纳） |
+| Keeper/Player 双面（KP 全知/玩家过滤） | `kp_tools_knowledge.py` | `keeper_note` 列隔离（prompt 零注入）+ 🎩 真相展示 |
+| Hook 运行时（预设钩子条件触发） | `hook_runtime.py` | `lore_trigger_ok` 三维（triggerPresent/Item/BondMin）+ 🪝 编辑器 |
+
 ---
 
 ## 一·五、评估过但未落地代码的候选（避免遗漏争议）
@@ -255,6 +267,7 @@ Kaleido 的部分能力吸收自以下开源项目（Morphling 能力吸收方�
 - ainovel-cli — https://github.com/voocel/ainovel-cli（MIT，相关推荐/七维守卫/分诊/验收）
 - Scriverse — https://github.com/musnows/Scriverse（AGPL-3.0，思路重实现：建议/守卫/采纳门禁）
 - DeterminFlow — https://github.com/alikon-art/DeterminFlow（AGPL-3.0，思路重实现：改编后验/Token 账本）
+- loreweaver — https://github.com/1A7432/loreweaver（MIT：骰审三检/折叠水位/Scribe 低语/Keeper 双面/Hook 触发）
 - denova — https://github.com/alfredxw/denova（导演台/规则检定/事件卡包/上下文管理）
 - xiami（虾米）— https://github.com/zhangxunvvv/xiami（剧情质检/大纲补丁/角色卡蒸馏）
 - tavern-card-distiller — https://github.com/leigegehaha/tavern-card-distiller（MIT，角色卡蒸馏输入管线）

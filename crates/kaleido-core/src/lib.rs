@@ -173,6 +173,7 @@ pub mod st_outline;
 pub mod st_writing_style;
 pub mod st_memory_contract;
 pub mod dialogue_fingerprint;
+pub mod dice_audit;
 pub mod harness;
 pub mod memory_weaver;
 pub mod ledger;

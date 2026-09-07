@@ -318,6 +318,7 @@ async fn call_builtin_tool(data_root: &Path, tool: &str, arguments: Value) -> Re
                     Some(fs.weight),
                     Some(fs.parent_ids.clone()),
                     Some(fs.expected_version_no),
+                    None,
                 )
                 .map_err(|e| format!("recall 失败（可能版本冲突）: {e}"))?;
             Ok(format!("已回收伏笔「{}」→ status=recalled", updated.title))

@@ -3605,6 +3605,45 @@ fn build_worldline_block(pack: &StoryPack, chapter_cursor: &str) -> Option<Strin
     Some(out)
 }
 
+/// Hook 条件触发（吞噬 loreweaver hook_runtime 口径）：entry 可带 trigger 条件，
+/// 任一不满足即跳过（与 sticky/cooldown 时间维正交，这是条件维）。
+/// triggerPresent: 需在场角色 id/名其一；triggerItem: 需任一口袋持有物品名其一；
+/// triggerBondMin: {cid: 分数} 需羁绊分达标其一（bond 分）。
+fn lore_trigger_ok(entry: &Value, session: &kaleido_core::TavernSession) -> bool {
+    // triggerPresent
+    if let Some(arr) = entry.get("triggerPresent").and_then(|v| v.as_array()) {
+        if arr.is_empty() { return true; }
+        let present: std::collections::HashSet<&str> = session.present_character_ids.iter().map(|s| s.as_str()).collect();
+        let hit = arr.iter().filter_map(|v| v.as_str()).any(|w| present.contains(w));
+        if !hit { return false; }
+    }
+    // triggerItem（任一口袋持有其一）
+    if let Some(arr) = entry.get("triggerItem").and_then(|v| v.as_array()) {
+        if arr.is_empty() { return true; }
+        let wants: Vec<String> = arr.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect();
+        let mut hit = false;
+        for pk in session.pockets.values() {
+            for it in pk.carrying.iter().chain(pk.worn.iter()) {
+                if wants.iter().any(|w| kaleido_core::pockets::same_item(&it.name, w)) { hit = true; break; }
+            }
+            if hit { break; }
+        }
+        if !hit { return false; }
+    }
+    // triggerBondMin {cid: min} 任一达标
+    if let Some(obj) = entry.get("triggerBondMin").and_then(|v| v.as_object()) {
+        if obj.is_empty() { return true; }
+        let mut hit = false;
+        for (k, vv) in obj {
+            let min = vv.as_i64().unwrap_or(0) as i32;
+            if let Some(b) = session.relationships.get(k) {
+                if b.score >= min { hit = true; break; }
+            }
+        }
+        if !hit { return false; }
+    }
+    true
+}
 fn filter_lore_entries<'a>(entries: &'a [Value], chapter_cursor: &str, node_id: &str) -> Vec<&'a Value> {
     let mut out = Vec::new();
     for entry in entries {
@@ -4499,6 +4538,15 @@ fn build_tavern_system_prompt(
         lines.push("{\"action\":\"<做了什么>\",\"intent\":\"<想达成什么>\",\"challenge\":\"<风险/阻碍>\",\"cost\":\"<失败代价>\",\"difficulty\":\"normal\",\"templateId\":\"<命中的配置id，可选>\",\"bonuses\":[{\"reason\":\"<原因>\",\"value\":1}],\"outcomes\":{\"criticalSuccess\":{\"result\":\"<大成功结果>\"},\"success\":{\"result\":\"<成功结果>\",\"stateChanges\":[{\"actorId\":\"<角色id>\",\"fieldId\":\"<字段>\",\"change\":1,\"reason\":\"<理由>\"}]},\"failure\":{\"result\":\"<失败结果>\"},\"criticalFailure\":{\"result\":\"<大失败结果>\"}}}".into());
         lines.push("只对结果不确定且值得掷骰的行动检定；纯对话/回忆不需要。不要在叙事正文里留这个 JSON。".into());
     }
+    // Scribe 低语消费侧（吞噬 loreweaver scribe 口径）：上回合后台提取的可检定行动，
+    // 以建议形态注入（KP 自由采纳，非强制；本回合用完即清）。
+    if !session.scribe_whispers.is_empty() {
+        lines.push("
+## Scribe 低语（上回合观察到的可检定行动，建议非强制）".into());
+        for w in &session.scribe_whispers {
+            lines.push(format!("- 建议考虑检定：{}", w));
+        }
+    }
     // [时间天气系统 v2 2026-08-17 + 1A 2026-08-18] 权威时钟+天气约束：模型必须以此为准书写正文场景。
     // v2：时间剧情信号驱动、天气用户指令第一原则。
     // 1A：改写旧强约束话术（原「必须与上一条完全一致；禁止跳变」与 v2 豁免条款自相矛盾，
@@ -4895,7 +4943,8 @@ fn build_tavern_system_prompt(
     // Lore entries filtered by chapter/node + sticky/cooldown timed effects (per-session, message-index based).
     // chat_len = messages count (matches Front Porch chatLength semantics).
     let chat_len = session.messages.len() as i32;
-    let lore_entries = filter_lore_entries(&pack.lore_entries, session.chapter_cursor.as_deref().unwrap_or(""), session.node_id.as_deref().unwrap_or(""));
+    let lore_entries_all = filter_lore_entries(&pack.lore_entries, session.chapter_cursor.as_deref().unwrap_or(""), session.node_id.as_deref().unwrap_or(""));
+    let lore_entries: Vec<&serde_json::Value> = lore_entries_all.into_iter().filter(|e| lore_trigger_ok(e, session)).collect();
     // timed bookkeeping: expire + sticky→cooldown transitions happen in save path (tick on turn end).
     // here: partition into sticky-forced vs cooldown-suppressed vs normal.
     {
@@ -7316,6 +7365,11 @@ async fn start_turn(
         "foreshadow preload",
     );
     let mut system_prompt = build_tavern_system_prompt(&pack, &tavern, &chapter_body, &state.auth.data_root().cross_session_dir(), query_embedding, &mcp_tools, foreshadow_block.as_deref());
+    // Scribe 低语用完即清（本回合已注入 prompt；下回合由后台提取重写）
+    if !tavern.scribe_whispers.is_empty() {
+        tracing::info!(n = tavern.scribe_whispers.len(), "st scribe: whispers consumed");
+        tavern.scribe_whispers.clear();
+    }
     // U9 (吞噬 Openwrite O5): 风格指南注入 —— 参考库启用的 style_guide 追加到 system prompt。
     // 零 LLM 依赖（规则版 evidence 合成）；未启用/无指南时零开销。
     {
@@ -8620,7 +8674,8 @@ async fn start_turn(
                 {
                     let clen = sess.messages.len() as i32;
                     // collect live lore keys for cooldown lookup
-                    let lore_now = filter_lore_entries(&pack.lore_entries, sess.chapter_cursor.as_deref().unwrap_or(""), sess.node_id.as_deref().unwrap_or(""));
+                    let lore_now_all = filter_lore_entries(&pack.lore_entries, sess.chapter_cursor.as_deref().unwrap_or(""), sess.node_id.as_deref().unwrap_or(""));
+                    let lore_now: Vec<&serde_json::Value> = lore_now_all.into_iter().filter(|e| lore_trigger_ok(e, &sess)).collect();
                     let by_key: std::collections::HashMap<String, &serde_json::Value> = lore_now.iter().map(|e| {
                         let title = e.get("title").and_then(|v| v.as_str()).unwrap_or("");
                         let key = if title.is_empty() { format!("pack.{}", e.get("id").and_then(|v| v.as_str()).unwrap_or("?")) } else { format!("pack.{}", title) };
@@ -9277,6 +9332,16 @@ async fn start_turn(
                                 });
                             }
                         }
+                        // [骰审] 伪造/矛盾 → med 记录（只记录不阻断，吞噬 loreweaver Stop 形态降级版）
+                        if let Some(dg) = sess.last_turn_diagnostic.as_ref() {
+                            if dg.dice_forgery || dg.dice_contradiction {
+                                vs.push(GuardViolation {
+                                    severity: GuardSeverity::Medium,
+                                    dim: "骰审",
+                                    msg: format!("骰审命中：{}", dg.dice_reasons.join("；")),
+                                });
+                            }
+                        }
                         // [双持检测] 同一物品在两个角色口袋 = 吃书（turn 17 银锁双持实踩）
                         {
                             let mut seen: std::collections::HashMap<String, String> = std::collections::HashMap::new();
@@ -9679,6 +9744,25 @@ async fn start_turn(
                     if vd_score >= 0.25 {
                         tracing::info!(score = vd_score, char = %vd_char, "st voice: 声线漂移");
                     }
+                    // 骰子审计三检（吞噬 loreweaver turn_checks 伪造/矛盾口径，纯核零 LLM）。
+                    // 本回合真值 = check_history 中 turn == sess.turn 的条目。
+                    let (dice_forgery, dice_contradiction, dice_reasons) = (|| {
+                        let claims = kaleido_core::dice_audit::extract_roll_claims(&full_text);
+                        if claims.is_empty() {
+                            return (false, false, Vec::new());
+                        }
+                        let truth: Vec<(u32, f64)> = sess
+                            .check_history
+                            .iter()
+                            .filter(|e| e.turn as u32 == sess.turn)
+                            .map(|e| (e.natural, e.total))
+                            .collect();
+                        let a = kaleido_core::dice_audit::audit(&claims, &truth);
+                        if a.forgery || a.contradiction {
+                            tracing::info!(forgery = a.forgery, contradiction = a.contradiction, reasons = ?a.reasons, "st dice: 审计命中");
+                        }
+                        (a.forgery, a.contradiction, a.reasons)
+                    })();
                     sess.last_turn_diagnostic = Some(kaleido_core::TurnDiagnostic {
                         turn: sess.turn,
                         accepted: true,
@@ -9690,6 +9774,9 @@ async fn start_turn(
                         voice_drift_score: vd_score,
                         voice_drift_char: vd_char,
                         voice_drift_reasons: vd_reasons,
+                        dice_forgery,
+                        dice_contradiction,
+                        dice_reasons: dice_reasons.clone(),
                     });
                 }
 
@@ -10146,6 +10233,9 @@ async fn stop_turn(
             voice_drift_score: 0.0,
             voice_drift_char: String::new(),
             voice_drift_reasons: Vec::new(),
+            dice_forgery: false,
+            dice_contradiction: false,
+            dice_reasons: Vec::new(),
         });
         tracing::info!(%session_id, run_id = %body.run_id, turn, duration_ms, "st turn stopped (diagnostic recorded)");
         if let Err(e) = state.sessions_tavern.save(sess) {
@@ -12075,7 +12165,7 @@ async fn run_event_extract(
     let names: Vec<String> = pack_chars.iter().map(|(_, n)| n.clone()).collect();
     let name_of = |cid: &str| pack_chars.iter().find(|(id, _)| id == cid).map(|(_, n)| n.clone()).unwrap_or_else(|| cid.to_string());
     let sys = format!(
-        "你是剧情事件提取器。只做提取，不创作、不续写。角色：{}。只输出 JSON（无 markdown 包裹），六个数组键必须全有（gives/promises/growth/bond/needs/journal），无事件则为空数组。规则：gives 包括人物间给予（给出/递出/塞入/放在桌上，填 from/to/item）与自取拾取（拿起/收起/攥在手心/装进口袋，to 填玩家，from 可空）；promises 仅当明确将来时承诺；growth：任何角色态度软化/强硬/透露身世/情绪波动都算一次（strength 0.3-0.8）；bond：任何好感/信任增减都给分（正负1到10），初次善意至少+2；journal：每回合至少记1条本回合最值得记住的事（kind=moment）；needs：疲惫/饥饿/寒冷/口渴等生理信号出现才记。",
+        "你是剧情事件提取器。只做提取，不创作、不续写。角色：{}。只输出 JSON（无 markdown 包裹），七个数组键必须全有（gives/promises/growth/bond/needs/journal/checks），无事件则为空数组。checks：正文或玩家输入中有人尝试了结果不确定的行动（潜行/偷听/攀爬/说服/攻击/闪避/追踪/开锁等）即报一笔(action,intent)（Scribe 低语，吞噬 loreweaver scribe 口径；关键词触发已废弃）。规则：gives 包括人物间给予（给出/递出/塞入/放在桌上，填 from/to/item）与自取拾取（拿起/收起/攥在手心/装进口袋，to 填玩家，from 可空）；promises 仅当明确将来时承诺；growth：任何角色态度软化/强硬/透露身世/情绪波动都算一次（strength 0.3-0.8）；bond：任何好感/信任增减都给分（正负1到10），初次善意至少+2；journal：每回合至少记1条本回合最值得记住的事（kind=moment）；needs：疲惫/饥饿/寒冷/口渴等生理信号出现才记。",
         names.join("、")
     );
     let user = format!("玩家输入：{}\n\n本回合正文：{}\n\n在场角色 id：{}", user_msg, full_text.chars().take(3000).collect::<String>(), present.join(","));
@@ -12087,10 +12177,10 @@ async fn run_event_extract(
     let sid = sess.session_id.clone();
     let mut dirty = false;
     {
-        let counts = ["gives","promises","growth","bond","needs","journal"].iter()
+        let counts = ["gives","promises","growth","bond","needs","journal","checks"].iter()
             .map(|k| format!("{}={}", k, v.get(k).and_then(|x| x.as_array()).map(|a| a.len()).unwrap_or(0)))
             .collect::<Vec<_>>().join(" ");
-        let all_zero = ["gives","promises","growth","bond","needs","journal"].iter()
+        let all_zero = ["gives","promises","growth","bond","needs","journal","checks"].iter()
             .all(|k| v.get(k).and_then(|x| x.as_array()).map(|a| a.is_empty()).unwrap_or(true));
         if all_zero {
             tracing::info!(%session_id, turn, counts = %counts, raw_head = %raw.chars().take(800).collect::<String>(), "st event_extract bg: parsed ZERO");
@@ -12173,6 +12263,24 @@ async fn run_event_extract(
             let cid = if ch_name.is_empty() { "narrator".into() } else { resolve_cid(pack_chars, |k| sess.promises.promises.iter().any(|x| x.character == k), ch_name) };
             sess.promises.push(kaleido_core::promise::Promise::new(&cid, "char", text, turn));
             dirty = true;
+        }
+    }
+    // checks → scribe_whispers（cap 5；下回合 prompt 消费后清空）
+    if let Some(arr) = v.get("checks").and_then(|x| x.as_array()) {
+        let mut ws: Vec<String> = vec![];
+        for c in arr.iter().take(5) {
+            let (act, intent) = (
+                c.get("action").and_then(|x| x.as_str()).unwrap_or("").trim(),
+                c.get("intent").and_then(|x| x.as_str()).unwrap_or("").trim(),
+            );
+            if act.is_empty() && intent.is_empty() { continue; }
+            if intent.is_empty() { ws.push(act.to_string()); }
+            else { ws.push(format!("{}（{}）", act, intent)); }
+        }
+        if !ws.is_empty() {
+            sess.scribe_whispers = ws;
+            dirty = true;
+            tracing::info!(%session_id, turn, n = sess.scribe_whispers.len(), "st event_extract bg: scribe whispers stored");
         }
     }
     // growth → strengthen
@@ -13336,6 +13444,31 @@ pub(crate) fn sweep_orphan_runs(state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ─── lore_trigger_ok Hook 条件触发单测（loreweaver ⑤） ──────────────────
+    #[test]
+    fn lore_trigger_ok_item_present_bond() {
+        use serde_json::json;
+        // 构造最小 session：内联模板（不读 data 文件，公开库可跑）
+        let mut sess_json: serde_json::Value = serde_json::json!({
+            "sessionId": "t", "packId": "p", "playable": "P1", "playMode": "mainline",
+            "contentTier": "standard", "turn": 1, "messages": [],
+            "presentCharacterIds": [] });
+        sess_json["pockets"] = serde_json::json!({"ayuan": {"carrying": [{"name": "银锁"}], "worn": [], "setAside": []}});
+        sess_json["relationships"] = serde_json::json!({});
+        let mut sess: kaleido_core::TavernSession = serde_json::from_value(sess_json).expect("sess");
+        // triggerItem 命中
+        assert!(lore_trigger_ok(&json!({"triggerItem":["银锁"]}), &sess));
+        assert!(!lore_trigger_ok(&json!({"triggerItem":["金锁"]}), &sess));
+        // triggerPresent：present 为空 → 跳过
+        assert!(!lore_trigger_ok(&json!({"triggerPresent":["cc-shentang"]}), &sess));
+        sess.present_character_ids.push("cc-shentang".into());
+        assert!(lore_trigger_ok(&json!({"triggerPresent":["cc-shentang"]}), &sess));
+        // triggerBondMin：0 分不达 50
+        assert!(!lore_trigger_ok(&json!({"triggerBondMin":{"cc-linwan":50}}), &sess));
+        // 无 trigger → 通过
+        assert!(lore_trigger_ok(&json!({"title":"x"}), &sess));
+    }
 
     // ─── parse_option_list JSON 污染防护单测（P11） ─────────────────────────
     #[test]

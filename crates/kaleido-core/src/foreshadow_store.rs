@@ -84,6 +84,9 @@ pub struct Foreshadow {
     /// 依赖的伏笔 id 列表（本伏笔依赖这些父伏笔）。
     #[serde(default)]
     pub parent_ids: Vec<String>,
+    /// Keeper 面（吞噬 loreweaver 双面口径）：KP 专属真相，玩家 prompt 永不注入。
+    #[serde(default)]
+    pub keeper_note: String,
     pub expected_version_no: i64,
     pub occurrences: Vec<Occurrence>,
     pub created_at: String,
@@ -135,6 +138,7 @@ fn row_foreshadow(r: &Row<'_>) -> rusqlite::Result<Foreshadow> {
         status: r.get(4)?,
         weight: r.get(5)?,
         parent_ids: parse_parent_ids(parent_ids.as_deref().unwrap_or("[]")),
+        keeper_note: r.get(10).unwrap_or(None).unwrap_or_default(),
         expected_version_no: r.get(7)?,
         occurrences: vec![],
         created_at: r.get(8)?,
@@ -228,6 +232,10 @@ impl ForeshadowStore {
             conn.execute_batch("ALTER TABLE foreshadows ADD COLUMN parent_ids TEXT NOT NULL DEFAULT '[]';")
                 .map_err(DbError::Migrate)?;
         }
+        if !table_has_column(conn, "foreshadows", "keeper_note")? {
+            conn.execute_batch("ALTER TABLE foreshadows ADD COLUMN keeper_note TEXT NOT NULL DEFAULT '';")
+                .map_err(DbError::Migrate)?;
+        }
         Ok(())
     }
 
@@ -260,7 +268,7 @@ impl ForeshadowStore {
         let mut c = self.conn()?;
         let conn = c.conn();
         let row = conn.query_row(
-            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at 
+            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at, keeper_note 
              FROM foreshadows WHERE id=?1",
             [id],
             row_foreshadow,
@@ -407,10 +415,10 @@ impl ForeshadowStore {
         let mut c = self.conn()?;
         let conn = c.conn();
         let sql = if let Some(_s) = status {
-            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at 
+            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at, keeper_note 
              FROM foreshadows WHERE work_id=?1 AND status=?2 ORDER BY created_at DESC, id ASC"
         } else {
-            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at 
+            "SELECT id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at, keeper_note 
              FROM foreshadows WHERE work_id=?1 ORDER BY created_at DESC, id ASC"
         };
         let mut stmt = conn.prepare(sql).map_err(DbError::Migrate)?;
@@ -441,7 +449,7 @@ impl ForeshadowStore {
         }
     }
 
-    pub fn create_foreshadow(&self, work_id: &str, title: String, description: String, status: String) -> Result<Foreshadow, ForeshadowError> {
+    pub fn create_foreshadow(&self, work_id: &str, title: String, description: String, status: String, keeper_note: Option<String>) -> Result<Foreshadow, ForeshadowError> {
         if !matches!(status.as_str(), "planted" | "active" | "recalled") {
             return Err(ForeshadowError::InvalidStatus(status));
         }
@@ -453,9 +461,9 @@ impl ForeshadowStore {
         let id = Uuid::new_v4().to_string();
         let ts = now();
         conn.execute(
-            "INSERT INTO foreshadows (id, work_id, title, description, status, weight, parent_ids, expected_version_no, created_at, updated_at) 
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?8)",
-            params![id, work_id, title, description, status, 5, "[]", ts]
+            "INSERT INTO foreshadows (id, work_id, title, description, status, weight, parent_ids, keeper_note, expected_version_no, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, ?9, ?9)",
+            params![id, work_id, title, description, status, 5, "[]", keeper_note.unwrap_or_default(), ts]
         ).map_err(DbError::Migrate)?;
         self.build_foreshadow(&id)
     }
@@ -469,6 +477,7 @@ impl ForeshadowStore {
         weight: Option<i32>,
         parents: Option<Vec<String>>,
         expected_version_no: Option<i64>,
+        keeper_note: Option<String>,
     ) -> Result<Foreshadow, ForeshadowError> {
         let mut c = self.conn()?;
         let conn = c.conn();
@@ -524,6 +533,7 @@ impl ForeshadowStore {
             status.map(Value::from).unwrap_or(Value::Null),
             weight.map(Value::from).unwrap_or(Value::Null),
             parent_json.map(Value::from).unwrap_or(Value::Null),
+            keeper_note.map(Value::from).unwrap_or(Value::Null),
             Value::from(new_version),
             Value::from(ts),
             Value::Text(id.to_string()),
@@ -535,6 +545,7 @@ impl ForeshadowStore {
                 status = COALESCE(?, status),
                 weight = COALESCE(?, weight),
                 parent_ids = COALESCE(?, parent_ids),
+                keeper_note = COALESCE(?, keeper_note),
                 expected_version_no = ?,
                 updated_at = ?
              WHERE id = ?",
@@ -889,7 +900,7 @@ mod tests {
     #[test]
     fn foreshadow_lifecycle() {
         let s = store();
-        let f = s.create_foreshadow("w1", "title1".into(), "desc1".into(), "planted".into()).expect("create");
+        let f = s.create_foreshadow("w1", "title1".into(), "desc1".into(), "planted".into(), None).expect("create");
         assert_eq!(f.status, "planted");
         assert_eq!(f.title, "title1");
         let fs = s.list_foreshadows("w1", None, None).expect("list");
@@ -897,7 +908,7 @@ mod tests {
         assert_eq!(fs[0].id, f.id);
         let g = s.get_foreshadow(&f.id).expect("get").expect("some");
         assert_eq!(g.id, f.id);
-        let f2 = s.update_foreshadow(&f.id, Some("title2".into()), Some("desc2".into()), Some("active".into()), None, None, Some(f.expected_version_no)).expect("update");
+        let f2 = s.update_foreshadow(&f.id, Some("title2".into()), Some("desc2".into()), Some("active".into()), None, None, Some(f.expected_version_no), None).expect("update");
         assert_eq!(f2.status, "active");
         assert_eq!(f2.title, "title2");
         assert_eq!(f2.expected_version_no, 2);
@@ -908,17 +919,17 @@ mod tests {
     #[test]
     fn foreshadow_status_validation() {
         let s = store();
-        let err = s.create_foreshadow("w1", "title".into(), "".into(), "invalid".into()).expect_err("bad status");
+        let err = s.create_foreshadow("w1", "title".into(), "".into(), "invalid".into(), None).expect_err("bad status");
         assert!(matches!(err, ForeshadowError::InvalidStatus(_)));
-        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into()).expect("create");
-        let err = s.update_foreshadow(&f.id, None, None, Some("invalid".into()), None, None, Some(f.expected_version_no)).expect_err("bad status update");
+        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into(), None).expect("create");
+        let err = s.update_foreshadow(&f.id, None, None, Some("invalid".into()), None, None, Some(f.expected_version_no), None).expect_err("bad status update");
         assert!(matches!(err, ForeshadowError::InvalidStatus(_)));
     }
 
     #[test]
     fn add_occurrence_duplicate() {
         let s = store();
-        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into()).expect("create");
+        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into(), None).expect("create");
         let _occ = s.add_occurrence(&f.id, "c1".into(), "plant".into(), "note1".into(), Some(f.expected_version_no)).expect("add");
         let err = s.add_occurrence(&f.id, "c1".into(), "plant".into(), "note2".into(), Some(f.expected_version_no + 1)).expect_err("dup");
         assert!(matches!(err, ForeshadowError::DuplicateOccurrence));
@@ -927,7 +938,7 @@ mod tests {
     #[test]
     fn add_remove_occurrence() {
         let s = store();
-        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into()).expect("create");
+        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into(), None).expect("create");
         let occ = s.add_occurrence(&f.id, "c1".into(), "plant".into(), "note1".into(), Some(f.expected_version_no)).expect("add");
         s.remove_occurrence(&f.id, &occ.id, Some(f.expected_version_no + 1)).expect("remove");
         assert!(s.get_foreshadow(&f.id).expect("get").unwrap().occurrences.is_empty());
@@ -936,7 +947,7 @@ mod tests {
     #[test]
     fn cascade_delete_foreshadow() {
         let s = store();
-        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into()).expect("create");
+        let f = s.create_foreshadow("w1", "title".into(), "".into(), "planted".into(), None).expect("create");
         let _occ = s.add_occurrence(&f.id, "c1".into(), "plant".into(), "note1".into(), Some(f.expected_version_no)).expect("add");
         let fresh = s.get_foreshadow(&f.id).expect("get").unwrap();
         s.delete_foreshadow(&f.id, Some(fresh.expected_version_no)).expect("delete");
@@ -949,25 +960,25 @@ mod tests {
     #[test]
     fn weight_default_and_update() {
         let s = store();
-        let f = s.create_foreshadow("w1", "t".into(), "".into(), "planted".into()).expect("create");
+        let f = s.create_foreshadow("w1", "t".into(), "".into(), "planted".into(), None).expect("create");
         assert_eq!(f.weight, 5, "默认权重应为 5");
-        let u = s.update_foreshadow(&f.id, None, None, None, Some(9), None, Some(f.expected_version_no)).expect("update weight");
+        let u = s.update_foreshadow(&f.id, None, None, None, Some(9), None, Some(f.expected_version_no), None).expect("update weight");
         assert_eq!(u.weight, 9);
         let g = s.get_foreshadow(&f.id).expect("get").unwrap();
         assert_eq!(g.weight, 9, "weight 持久化");
         // 不传 weight 时保持原值
-        let u2 = s.update_foreshadow(&f.id, None, None, None, None, None, Some(u.expected_version_no)).expect("no-op update");
+        let u2 = s.update_foreshadow(&f.id, None, None, None, None, None, Some(u.expected_version_no), None).expect("no-op update");
         assert_eq!(u2.weight, 9);
     }
 
     #[test]
     fn weight_out_of_range_rejected() {
         let s = store();
-        let f = s.create_foreshadow("w1", "t".into(), "".into(), "planted".into()).expect("create");
-        let err0 = s.update_foreshadow(&f.id, None, None, None, Some(0), None, Some(f.expected_version_no)).expect_err("0 invalid");
+        let f = s.create_foreshadow("w1", "t".into(), "".into(), "planted".into(), None).expect("create");
+        let err0 = s.update_foreshadow(&f.id, None, None, None, Some(0), None, Some(f.expected_version_no), None).expect_err("0 invalid");
         assert!(matches!(err0, ForeshadowError::InvalidWeight(0)));
         let f2 = s.get_foreshadow(&f.id).expect("get").unwrap();
-        let err11 = s.update_foreshadow(&f.id, None, None, None, Some(11), None, Some(f2.expected_version_no)).expect_err("11 invalid");
+        let err11 = s.update_foreshadow(&f.id, None, None, None, Some(11), None, Some(f2.expected_version_no), None).expect_err("11 invalid");
         assert!(matches!(err11, ForeshadowError::InvalidWeight(11)));
         assert_eq!(s.get_foreshadow(&f.id).expect("get").unwrap().weight, 5, "非法权重不得落库");
     }
@@ -975,10 +986,10 @@ mod tests {
     #[test]
     fn list_foreshadows_weight_min_filter() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("create");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("create");
-        let _ = s.update_foreshadow(&a.id, None, None, None, Some(3), None, Some(a.expected_version_no)).expect("w3");
-        let _ = s.update_foreshadow(&b.id, None, None, None, Some(8), None, Some(b.expected_version_no)).expect("w8");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("create");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("create");
+        let _ = s.update_foreshadow(&a.id, None, None, None, Some(3), None, Some(a.expected_version_no), None).expect("w3");
+        let _ = s.update_foreshadow(&b.id, None, None, None, Some(8), None, Some(b.expected_version_no), None).expect("w8");
         let heavy = s.list_foreshadows("w1", None, Some(5)).expect("filter");
         assert_eq!(heavy.len(), 1);
         assert_eq!(heavy[0].id, b.id);
@@ -987,9 +998,9 @@ mod tests {
     #[test]
     fn dependency_chain_legal() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("create");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("create");
-        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into()).expect("create");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("create");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("create");
+        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into(), None).expect("create");
         // B 依赖 A：A -> B
         let bb = s.set_dependency(&b.id, &a.id, Some(b.expected_version_no)).expect("B<-A");
         assert_eq!(bb.parent_ids, vec![a.id.clone()]);
@@ -1008,16 +1019,16 @@ mod tests {
     #[test]
     fn dependency_cycle_rejected_a_to_b_to_c_to_a() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("a");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("b");
-        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into()).expect("c");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("a");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("b");
+        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into(), None).expect("c");
         s.set_dependency(&b.id, &a.id, Some(b.expected_version_no)).expect("B<-A");
         s.set_dependency(&c.id, &b.id, Some(c.expected_version_no)).expect("C<-B");
         // 尝试成环：A <- C（C 依赖 A 会制造 A->B->C->A）
         let err = s.set_dependency(&a.id, &c.id, Some(a.expected_version_no)).expect_err("cycle");
         assert!(matches!(err, ForeshadowError::Cycle(id) if id == a.id));
         // 完整替换成环同样被拒
-        let err2 = s.update_foreshadow(&a.id, None, None, None, None, Some(vec![c.id.clone()]), None).expect_err("cycle replace");
+        let err2 = s.update_foreshadow(&a.id, None, None, None, None, Some(vec![c.id.clone()]), None, None).expect_err("cycle replace");
         assert!(matches!(err2, ForeshadowError::Cycle(_)));
         // 环写不进去：A 依旧无父
         assert!(s.get_dependencies(&a.id).expect("deps of A").is_empty());
@@ -1028,8 +1039,8 @@ mod tests {
     #[test]
     fn dependency_self_and_duplicate_rejected() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("a");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("b");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("a");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("b");
         let err_self = s.set_dependency(&a.id, &a.id, Some(a.expected_version_no)).expect_err("self");
         assert!(matches!(err_self, ForeshadowError::BadRequest(_)));
         let b2 = s.set_dependency(&b.id, &a.id, Some(b.expected_version_no)).expect("B<-A");
@@ -1042,8 +1053,8 @@ mod tests {
     #[test]
     fn remove_dependency_restores_dag() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("a");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("b");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("a");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("b");
         s.set_dependency(&b.id, &a.id, Some(b.expected_version_no)).expect("B<-A");
         let removed = s.remove_dependency(&b.id, &a.id, Some(b.expected_version_no + 1)).expect("remove");
         assert!(removed.parent_ids.is_empty());
@@ -1056,13 +1067,13 @@ mod tests {
     #[test]
     fn parents_replace_updates_dependency_list() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("a");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into()).expect("b");
-        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into()).expect("c");
-        let u = s.update_foreshadow(&c.id, None, None, None, None, Some(vec![a.id.clone(), b.id.clone(), a.id.clone()]), Some(c.expected_version_no)).expect("replace");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("a");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "planted".into(), None).expect("b");
+        let c = s.create_foreshadow("w1", "c".into(), "".into(), "planted".into(), None).expect("c");
+        let u = s.update_foreshadow(&c.id, None, None, None, None, Some(vec![a.id.clone(), b.id.clone(), a.id.clone()]), Some(c.expected_version_no), None).expect("replace");
         assert_eq!(u.parent_ids.len(), 2, "自动去重");
         assert!(u.parent_ids.contains(&a.id) && u.parent_ids.contains(&b.id));
-        let empty = s.update_foreshadow(&c.id, None, None, None, None, Some(vec![]), Some(u.expected_version_no)).expect("clear");
+        let empty = s.update_foreshadow(&c.id, None, None, None, None, Some(vec![]), Some(u.expected_version_no), None).expect("clear");
         assert!(empty.parent_ids.is_empty());
     }
 
@@ -1098,12 +1109,12 @@ mod tests {
     #[test]
     fn stats_group_by_status_and_average_weight() {
         let s = store();
-        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into()).expect("a");
-        let b = s.create_foreshadow("w1", "b".into(), "".into(), "active".into()).expect("b");
-        let c = s.create_foreshadow("w1", "c".into(), "".into(), "recalled".into()).expect("c");
-        let _ = s.update_foreshadow(&a.id, None, None, None, Some(10), None, Some(a.expected_version_no)).expect("w10");
-        let _ = s.update_foreshadow(&b.id, None, None, None, Some(4), None, Some(b.expected_version_no)).expect("w4");
-        let _ = s.update_foreshadow(&c.id, None, None, None, Some(1), None, Some(c.expected_version_no)).expect("w1");
+        let a = s.create_foreshadow("w1", "a".into(), "".into(), "planted".into(), None).expect("a");
+        let b = s.create_foreshadow("w1", "b".into(), "".into(), "active".into(), None).expect("b");
+        let c = s.create_foreshadow("w1", "c".into(), "".into(), "recalled".into(), None).expect("c");
+        let _ = s.update_foreshadow(&a.id, None, None, None, Some(10), None, Some(a.expected_version_no), None).expect("w10");
+        let _ = s.update_foreshadow(&b.id, None, None, None, Some(4), None, Some(b.expected_version_no), None).expect("w4");
+        let _ = s.update_foreshadow(&c.id, None, None, None, Some(1), None, Some(c.expected_version_no), None).expect("w1");
         let stats = s.foreshadow_stats("w1").expect("stats");
         assert_eq!(stats.total, 3);
         assert_eq!(stats.by_status.get("planted"), Some(&1));

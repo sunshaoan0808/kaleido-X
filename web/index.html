@@ -1022,6 +1022,7 @@
                     <div class="az-panel-head"><h3>新建</h3></div>
                     <label class="muted sm">标题 <input id="fs-new-title" style="width:100%" /></label>
                     <label class="muted sm">描述 <input id="fs-new-desc" style="width:100%" /></label>
+                    <label class="muted sm">🎩 KP 真相（仅 Keeper 可见，玩家 prompt 永不注入） <input id="fs-new-keeper" style="width:100%" placeholder="如：第三枚是赝品" /></label>
                     <label class="muted sm">状态
                       <select id="fs-new-status"><option value="planted">planted 已埋</option><option value="active">active 已激活</option><option value="recalled">recalled 已回收</option></select>
                     </label>
@@ -1032,6 +1033,7 @@
                     <div class="az-panel-head"><h3>编辑</h3></div>
                     <label class="muted sm">标题 <input id="fs-edit-title" style="width:100%" /></label>
                     <label class="muted sm">描述 <input id="fs-edit-desc" style="width:100%" /></label>
+                    <label class="muted sm">🎩 KP 真相（仅 Keeper 可见） <input id="fs-edit-keeper" style="width:100%" /></label>
                     <label class="muted sm">状态
                       <select id="fs-edit-status"><option value="planted">planted 已埋</option><option value="active">active 已激活</option><option value="recalled">recalled 已回收</option></select>
                     </label>
@@ -1809,6 +1811,10 @@ Use this skill for smoke tests.
               <label class="sm">正文 <textarea id="st-lore-text" rows="3"></textarea></label>
               <label class="sm">章节范围 <input id="st-lore-range" placeholder="ch01-ch02 或空=永久" /></label>
               <label class="row sm"><input type="checkbox" id="st-lore-perm" /> 永久条</label>
+              <label class="sm">🪝 Hook 条件（任一不满足即跳过）</label>
+              <label class="sm">在场角色 <input id="st-lore-trigger-present" placeholder="cc-shentang,cc-linwan（逗号分隔）" /></label>
+              <label class="sm">持有物品 <input id="st-lore-trigger-item" placeholder="银锁,信（逗号分隔）" /></label>
+              <label class="sm">羁绊阈值 <input id="st-lore-trigger-bond" placeholder="cc-linwan:50（cid:分数）" /></label>
               <div class="row gap-sm"><button type="button" id="st-lore-save" class="sm">保存</button><button type="button" id="st-lore-cancel" class="ghost sm">取消</button><button type="button" id="st-lore-del" class="ghost sm">删除</button></div>
             </div>
           </div>

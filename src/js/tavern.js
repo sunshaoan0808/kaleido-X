@@ -608,6 +608,11 @@ async function stStageRender() {
           '<div class="st-stage-row"><b>角色</b><span>' + stStageVal(vc) +
           '</span><b>原因</b><span>' + stStageVal(Array.isArray(vr) ? vr.join('；') : vr) + '</span></div>');
       }
+      if (dg && (dg.diceForgery || dg.dice_forgery || dg.diceContradiction || dg.dice_contradiction)) {
+        const dr = dg.diceReasons || dg.dice_reasons || [];
+        out += stStageSec('🎲 骰审', '命中',
+          '<div class="st-stage-row"><b>审计</b><span>' + stStageVal(Array.isArray(dr) ? dr.join('；') : dr) + '</span></div>');
+      }
       if (dg && dg.humanizeTotal) {
         const col = dg.humanizeTotal >= 45 ? '#7CFC98' : (dg.humanizeTotal >= 35 ? '#ffd166' : '#ff6b6b');
         out += stStageSec('✍️ 去 AI 味', dg.humanizeTotal + '/50 ' + (dg.humanizeGrade || ''),
@@ -5225,7 +5230,12 @@ function stRenderLore() {
     const el = document.createElement('div');
     el.className = 'item' + (stLoreEditIdx === i ? ' active' : '');
     const title = e.title || e.id || ('条目' + (i + 1));
-    const meta = (e.permanent ? '永久' : (e.chapterRange || '无范围')) + (e.nodeIds && e.nodeIds.length ? ' · nodes ' + e.nodeIds.join(',') : '');
+    let meta = (e.permanent ? '永久' : (e.chapterRange || '无范围')) + (e.nodeIds && e.nodeIds.length ? ' · nodes ' + e.nodeIds.join(',') : '');
+    const trig = [];
+    if (e.triggerPresent && e.triggerPresent.length) trig.push('在场:' + e.triggerPresent.join(','));
+    if (e.triggerItem && e.triggerItem.length) trig.push('持有:' + e.triggerItem.join(','));
+    if (e.triggerBondMin && Object.keys(e.triggerBondMin).length) trig.push('羁绊:' + Object.entries(e.triggerBondMin).map(([k,v]) => k + '≥' + v).join(','));
+    if (trig.length) meta += ' · 🪝' + trig.join('|');
     el.innerHTML = '<span class="t"></span><small></small>';
     el.querySelector('.t').textContent = title;
     el.querySelector('small').textContent = meta;
@@ -5242,12 +5252,17 @@ function stOpenLoreEditor(idx) {
   $('st-lore-text').value = e.text || e.content || '';
   $('st-lore-range').value = e.chapterRange || '';
   $('st-lore-perm').checked = !!e.permanent || !e.chapterRange;
+  $('st-lore-trigger-present').value = (e.triggerPresent || []).join(',');
+  $('st-lore-trigger-item').value = (e.triggerItem || []).join(',');
+  $('st-lore-trigger-bond').value = Object.entries(e.triggerBondMin || {}).map(([k,v]) => k + ':' + v).join(',');
   stRenderLore();
 }
 
 async function stSaveLore() {
   if (!tavernPack) return;
   const entries = stEnsureLoreArray(tavernPack);
+  const parseList = (s) => String(s || '').split(/[,，]/).map((x) => x.trim()).filter(Boolean);
+  const parseBond = (s) => { const o = {}; String(s || '').split(/[,，]/).forEach((p) => { const [k, v] = p.split(':').map((x) => (x || '').trim()); if (k && v !== undefined && v !== '' && Number.isFinite(Number(v))) o[k] = Number(v); }); return o; };
   const entry = {
     id: (stLoreEditIdx >= 0 && entries[stLoreEditIdx].id) || ('lore-' + Date.now()),
     title: ($('st-lore-title').value || '').trim() || '未命名',
@@ -5255,7 +5270,13 @@ async function stSaveLore() {
     chapterRange: ($('st-lore-range').value || '').trim(),
     permanent: !!$('st-lore-perm').checked,
     nodeIds: (stLoreEditIdx >= 0 && entries[stLoreEditIdx].nodeIds) || [],
+    triggerPresent: parseList($('st-lore-trigger-present').value),
+    triggerItem: parseList($('st-lore-trigger-item').value),
+    triggerBondMin: parseBond($('st-lore-trigger-bond').value),
   };
+  if (!entry.triggerPresent.length) delete entry.triggerPresent;
+  if (!entry.triggerItem.length) delete entry.triggerItem;
+  if (!Object.keys(entry.triggerBondMin).length) delete entry.triggerBondMin;
   if (stLoreEditIdx >= 0) entries[stLoreEditIdx] = entry; else entries.push(entry);
   tavernPack.loreEntries = entries;
   tavernPack.updatedAt = new Date().toISOString();

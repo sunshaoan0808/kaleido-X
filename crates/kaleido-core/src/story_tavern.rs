@@ -2452,6 +2452,10 @@ pub struct TavernSession {
     /// P0-1: 回合检查点（cap 30，吸收自梨园 story_command /rewind /reroll）。
     #[serde(default)]
     pub checkpoints: Vec<TurnCheckpoint>,
+    /// Chronicle 折叠水位线（吞噬 loreweaver chronicle lag 窗口口径）：
+    /// ≤此回合的 L2 事件视为已折叠（只读摘要），回退禁跨水位。
+    #[serde(default)]
+    pub fold_through_turn: u32,
     /// U11: epoch 压缩代数 —— 上下文窗口阈值驱动压缩（替换机械 turn%8），每次触发 +1。
     #[serde(default)]
     pub epoch: u32,
@@ -2467,6 +2471,10 @@ pub struct TavernSession {
     /// G10: 最近一次回合提交诊断摘要（stop_turn 或回合完成时写入；serde default 兼容旧会话文件）。
     #[serde(default)]
     pub last_turn_diagnostic: Option<TurnDiagnostic>,
+    /// Scribe 低语（吞噬 loreweaver scribe 口径）：上回合事件提取报的可检定行动，
+    /// 本回合 prompt 注入为建议（KP 自由采纳，非强制）。serde default 兼容旧会话。
+    #[serde(default)]
+    pub scribe_whispers: Vec<String>,
     /// X3 (吞噬自 xiami skimming.rs): 最近一次正文定稿后的速读质检问题（诊断展示用）。
     #[serde(default)]
     pub xiami_skim_issues: Vec<SkimIssue>,
@@ -2624,6 +2632,15 @@ pub struct TurnDiagnostic {
     /// 声线漂移原因（中文）。
     #[serde(default)]
     pub voice_drift_reasons: Vec<String>,
+    /// 骰子伪造嫌疑（吞噬 loreweaver turn_checks 伪造检）。
+    #[serde(default)]
+    pub dice_forgery: bool,
+    /// 骰子矛盾（吞噬 loreweaver turn_checks 矛盾检）。
+    #[serde(default)]
+    pub dice_contradiction: bool,
+    /// 骰审明细（中文）。
+    #[serde(default)]
+    pub dice_reasons: Vec<String>,
 }
 
 fn default_timeline() -> String {
@@ -3746,11 +3763,13 @@ mod opening_tests {
             last_check_results: vec![],
             check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),
@@ -4839,12 +4858,14 @@ impl TavernSessionStore {
             last_check_results: vec![],
         check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             // U11: 新会话默认 epoch=0、空账本（serde default 兼容旧会话文件）。
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),
@@ -5027,7 +5048,16 @@ impl TavernSession {
             return Ok(0);
         }
         let len = self.checkpoints.len();
-        let idx = len.saturating_sub(steps + 1).min(len - 1);
+        let mut idx = len.saturating_sub(steps + 1).min(len - 1);
+        // 折叠水位守卫：禁跨水位回退（loreweaver undo lag 窗口同款）
+        if self.checkpoints[idx].turn <= self.fold_through_turn {
+            // 找水位之后最近的 checkpoint
+            if let Some(j) = self.checkpoints.iter().rposition(|c| c.turn > self.fold_through_turn) {
+                idx = j;
+            } else {
+                return Ok(0);
+            }
+        }
         let cp = self.checkpoints[idx].clone();
         self.turn = cp.turn;
         self.node_id = cp.node_id;
@@ -5954,12 +5984,14 @@ mod tests {
             last_check_results: vec![],
         check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             // U11: 测试构造显式初始化新字段。
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),
@@ -6192,12 +6224,14 @@ mod focus_tests {
             last_check_results: vec![],
         check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             // U11: 测试构造显式初始化新字段。
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),
@@ -6305,12 +6339,14 @@ mod worldline_tests {
             last_check_results: vec![],
         check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             // U11: 测试构造显式初始化新字段。
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),
@@ -7810,11 +7846,13 @@ mod turn_submit_guard_tests {
             last_check_results: vec![],
         check_history: vec![],
             checkpoints: vec![],
+            fold_through_turn: 0,
             epoch: 0,
             epoch_last_turn: None,
             epoch_last_chars: None,
             turn_cost_ledger: TurnCostLedger::default(),
             last_turn_diagnostic: None,
+            scribe_whispers: Default::default(),
             xiami_skim_issues: Vec::new(),
             xiami_skim_sample: String::new(),
             chapter_diaries: Vec::new(),

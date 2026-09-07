@@ -161,6 +161,9 @@ struct CreateForeshadowBody {
     description: String,
     #[serde(default)]
     status: Option<String>,
+    /// Keeper 面（KP 专属真相，玩家 prompt 永不注入）。
+    #[serde(default)]
+    keeper_note: Option<String>,
 }
 
 impl CreateForeshadowBody {
@@ -190,6 +193,9 @@ struct UpdateForeshadowBody {
     parents: Option<Vec<String>>,
     #[serde(default)]
     expected_version_no: Option<i64>,
+    /// Keeper 面（KP 专属真相，玩家 prompt 永不注入）。
+    #[serde(default)]
+    keeper_note: Option<String>,
 }
 
 impl UpdateForeshadowBody {
@@ -212,6 +218,8 @@ impl UpdateForeshadowBody {
             && self.status.is_none()
             && self.weight.is_none()
             && self.parents.is_none()
+            && self.keeper_note.is_none()
+            && self.keeper_note.is_none()
         {
             return Err("at least one of title/description/status/weight/parents must be provided");
         }
@@ -389,7 +397,7 @@ async fn create_foreshadow_h(
     let title = body.title.trim().to_string();
     match state
         .foreshadow
-        .create_foreshadow(&work_id, title, body.description, body.status.unwrap_or_default())
+        .create_foreshadow(&work_id, title, body.description, body.status.unwrap_or_default(), body.keeper_note)
     {
         Ok(f) => (StatusCode::CREATED, Json(json!(f))).into_response(),
         Err(e) => foreshadow_err(e),
@@ -434,6 +442,7 @@ async fn update_foreshadow_h(
         body.weight,
         parents,
         body.expected_version_no,
+        body.keeper_note,
     ) {
         Ok(f) => ok_value(json!(f)),
         Err(e) => foreshadow_err(e),

@@ -8,7 +8,11 @@
 import { $ } from './dom.js';
 import { api } from './api.js';
 import { showToast } from './toast.js';
-import { showConfirm } from './dialog.js';
+import { showConfirm, showPrompt } from './dialog.js';
+import { tavernPack, tavernSession } from './tavern.js';
+
+let azSelectedProjectId = '';
+let azSelectedWorkspaceId = '';
 
 
 /* ================= _analysis-part.js ================= */
@@ -68,7 +72,7 @@ import { showConfirm } from './dialog.js';
     if (!list) return;
     list.textContent = '加载任务…';
     try {
-      const r = await api('/api/v1/works/' + encodeURIComponent((window.__kaleidoAnState ? window.__kaleidoAnState.workId : 'default')) + '/analysis/tasks');
+      const r = await api('/api/v1/works/' + encodeURIComponent((window.__kaleidoAnState ? window.__kaleidoAnState.workId() : 'default')) + '/analysis/tasks');
       anItems = Array.isArray(r.tasks) ? r.tasks : [];
       renderAnList();
       const busy = anItems.some((t) => t.status === 'queued' || t.status === 'running');
@@ -138,7 +142,7 @@ import { showConfirm } from './dialog.js';
     if (!paths.length) { showToast('请填写至少一个范围路径（相对路径，每行一个，如 ch01.md）', 'warning'); return; }
     if (btn) btn.disabled = true;
     try {
-      await api('/api/v1/works/' + encodeURIComponent((window.__kaleidoAnState ? window.__kaleidoAnState.workId : 'default')) + '/analysis/tasks', {
+      await api('/api/v1/works/' + encodeURIComponent((window.__kaleidoAnState ? window.__kaleidoAnState.workId() : 'default')) + '/analysis/tasks', {
         method: 'POST',
         body: JSON.stringify({ kind, scope: { paths } }),
       });
@@ -534,7 +538,17 @@ import { showConfirm } from './dialog.js';
 /* S2.12: analysis facade — wand tools (compass/review/assets/image real module)
  * read the author-zone work selection via this accessor (was bare closure ref). */
 try {
-  window.__kaleidoAnState = { workId: () => (window.__kaleidoAnState ? window.__kaleidoAnState.workId : 'default') };
+  // workId accessor mirrors the legacy _analysis-part anWorkId(): read the
+  // author-zone #an-work selector, fall back to 'default'. Exposed as a
+  // FUNCTION (wand.js calls __kaleidoAnState.workId()); insight.js:75/145
+  // call it too — never take the bare function as a value.
+  window.__kaleidoAnState = { workId: () => {
+    try {
+      const sel = document.getElementById('an-work');
+      if (sel && String(sel.value).trim()) return String(sel.value).trim();
+    } catch (_) {}
+    return 'default';
+  } };
 } catch (_) {}
 
 /* ================= _graph-part.js ================= */
@@ -863,8 +877,8 @@ try {
     const cat = await showPrompt('关系类型：family 亲属 / social 社交 / emotional 情感 / conflict 冲突 / uncertain 未确定', { value: 'social' });
     if (cat === null) return;
     if (!REL_STYLE[cat]) { showToast('无效的关系类型', 'warning'); return; }
-    const subtype = await showPrompt('关系子类（如 兄妹/仇敌，可空）', { value: r.subtype || '' }) || '';
-    const kw = await showPrompt('关键词（逗号分隔，可空）', { value: (r.keywords || []).join('、') });
+    const subtype = await showPrompt('关系子类（如 兄妹/仇敌，可空）', { value: '' }) || '';
+    const kw = await showPrompt('关键词（逗号分隔，可空）', { value: '' });
     const st = await showPrompt('状态：c confirmed / p pending / r rejected', { value: 'p' });
     const status = st === 'c' ? 'confirmed' : (st === 'r' ? 'rejected' : 'pending');
     try {
@@ -1441,7 +1455,8 @@ try {
       el.className = 'az-item' + (fsEditing && fsEditing.id === f.id ? ' active' : '');
       el.style.borderLeft = '3px solid ' + (f.status === 'recalled' ? '#9aa5b5' : (f.status === 'active' ? '#ffad42' : '#43e39a'));
       el.innerHTML = '<span class="az-title"></span><button type="button" class="ghost sm fs-edit" data-id="" title="编辑">✎</button><button type="button" class="ghost sm danger fs-del" data-id="" title="删除">✕</button>';
-      const badge = FS_STATUS[f.status] || f.status || '';
+      const hasKp = (f.keeper_note || f.keeperNote) ? ' 🎩' : '';
+      const badge = (FS_STATUS[f.status] || f.status || '') + hasKp;
       const m = fsChainMetrics(f);
       const chain = (m.deps || m.outs) ? ' · 依赖' + m.deps + '/' + m.outs : '';
       el.querySelector('.az-title').textContent = (f.title || '(无标题)') + (badge ? ' · ' + badge : '') + ' · ' + (Array.isArray(f.occurrences) ? f.occurrences.length : 0) + ' 点' + ' · 权' + (f.weight != null ? f.weight : 5) + chain;
@@ -1457,7 +1472,7 @@ try {
   }
 
   async function fsNew() {
-    const title = $('fs-new-title'), desc = $('fs-new-desc'), status = $('fs-new-status');
+    const title = $('fs-new-title'), desc = $('fs-new-desc'), status = $('fs-new-status'), kp = $('fs-new-keeper');
     if (!title || !String(title.value).trim()) { fsMsg('标题不能为空'); return; }
     try {
       await api('/api/v1/works/' + encodeURIComponent(fsWorkId()) + '/foreshadows', {
@@ -1466,10 +1481,12 @@ try {
           title: String(title.value).trim(),
           description: desc ? String(desc.value).trim() : '',
           status: status ? status.value : 'planted',
+          keeperNote: kp ? String(kp.value).trim() : '',
         }),
       });
       if (title) title.value = '';
       if (desc) desc.value = '';
+      if (kp) kp.value = '';
       await loadForeshadows();
     } catch (e) {
       fsMsg('新建失败: ' + e.message);
@@ -1500,6 +1517,8 @@ try {
     if (t) t.value = f.title || '';
     if (d) d.value = f.description || '';
     if (s) s.value = f.status || 'planted';
+    const kp = $('fs-edit-keeper');
+    if (kp) kp.value = f.keeper_note || f.keeperNote || '';
     if (v) v.textContent = f.expected_version_no != null ? '版本 ' + f.expected_version_no : '';
     renderFsOccurrences();
     renderFsDepEditor();
@@ -1508,7 +1527,7 @@ try {
 
   async function fsSaveEdit() {
     if (!fsEditing) return;
-    const t = $('fs-edit-title'), d = $('fs-edit-desc'), s = $('fs-edit-status');
+    const t = $('fs-edit-title'), d = $('fs-edit-desc'), s = $('fs-edit-status'), kp = $('fs-edit-keeper');
     const w = $('fs-edit-weight');
     let weight;
     if (w && String(w.value).trim() !== '') {
@@ -1523,6 +1542,7 @@ try {
           title: t ? String(t.value).trim() : undefined,
           description: d ? String(d.value).trim() : undefined,
           status: s ? s.value : undefined,
+          keeperNote: kp ? String(kp.value).trim() : undefined,
           weight: weight !== undefined ? weight : undefined,
           expectedVersionNo: fsEditing.expected_version_no,
         }),

@@ -1663,7 +1663,7 @@ async fn run_posthoc(
                 continue;
             }
             let desc = f.get("description").and_then(|x| x.as_str()).unwrap_or("").to_string();
-            if state.foreshadow.create_foreshadow(pid, title.to_string(), desc, "planted".into()).is_ok() {
+            if state.foreshadow.create_foreshadow(pid, title.to_string(), desc, "planted".into(), None).is_ok() {
                 planted += 1;
             }
         }
