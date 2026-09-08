@@ -4167,6 +4167,11 @@ fn build_tavern_system_prompt(
             "回合正文末尾必须输出 <角色清单>本回合实际出场的人名（顿号分隔）</角色清单>；没有新出场角色也输出 <角色清单></角色清单>。"
                 .into(),
         );
+        // [waidrin ①] 出场角色名用 ** 包裹（引用追踪，吸收自 waidrin narratePrompt 口径）
+        lines.push(
+            "正文中首次提到出场角色时，角色名用双星号包裹（如 **沈棠**、**林晚的**衣袖）；属格（**沈棠的**）亦可。"
+                .into(),
+        );
     }
     match session.play_mode {
         kaleido_core::PlayMode::Free => {
@@ -5982,6 +5987,31 @@ pub fn s7_recall_title(joined: &str) -> &'static str {
     }
 }
 
+/// [waidrin ①] `**Name**` 引用追踪（吸收自 waidrin engine.ts narrate 口径）：
+/// 扫正文里 `**名**` 包裹的角色引用（支持 `**沈棠的**` 属格变体，取首段名）。
+/// 返回去重后的引用名列表（顺序=出现序）。纯文本扫描，零 LLM。
+pub fn scan_bold_refs(text: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut rest = text;
+    while let Some(s) = rest.find("**") {
+        let after = &rest[s + 2..];
+        let Some(e) = after.find("**") else { break };
+        let mut name = after[..e].trim().to_string();
+        // 属格/后缀变体：取 `的/之/，、。/` 之前段
+        for sep in ['的', '之', '，', '、', ',', '/', ' '] {
+            if let Some(i) = name.find(sep) {
+                name = name[..i].trim().to_string();
+                break;
+            }
+        }
+        if name.chars().count() >= 2 && !out.contains(&name) {
+            out.push(name);
+        }
+        rest = &after[e + 2..];
+    }
+    out
+}
+
 fn split_roster_from_narrative(full: &str) -> (String, Option<Vec<String>>) {
     const OPEN: &str = "<角色清单>";
     const CLOSE: &str = "</角色清单>";
@@ -7335,6 +7365,8 @@ async fn start_turn(
             if let Some(eb) = &state.embedding_base {
                 let eb = eb.clone();
                 let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
                     .timeout(StdDuration::from_secs(10))
                     .build()
                     .unwrap_or_default();
@@ -9199,6 +9231,8 @@ async fn start_turn(
                                                         let text = format!("{} {}", stored.kind, stored.summary);
                                                         let eb_c = eb.clone();
                                                         let client_ev = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
                                                             .timeout(StdDuration::from_secs(10))
                                                             .build().unwrap_or_default();
                                                         match crate::llm_stream::get_embedding(&eb_c, &text, &client_ev).await {
@@ -9332,6 +9366,24 @@ async fn start_turn(
                                 });
                             }
                         }
+                        // [幻觉/冲突] hallu_names/conflicts → 告警（吞噬 AI-Reader-V2 口径；只记录不阻断）
+                        if let Some(dg) = sess.last_turn_diagnostic.as_ref() {
+                            for h in &dg.hallu_names {
+                                vs.push(GuardViolation {
+                                    severity: GuardSeverity::Medium,
+                                    dim: "幻觉",
+                                    msg: format!("提取名「{h}」在正文无 grounding（疑似幻觉，已跳过写入）"),
+                                });
+                            }
+                            for c in &dg.conflicts {
+                                let sev = if c.contains("死亡") { GuardSeverity::High } else { GuardSeverity::Medium };
+                                vs.push(GuardViolation {
+                                    severity: sev,
+                                    dim: "冲突",
+                                    msg: c.clone(),
+                                });
+                            }
+                        }
                         // [骰审] 伪造/矛盾 → med 记录（只记录不阻断，吞噬 loreweaver Stop 形态降级版）
                         if let Some(dg) = sess.last_turn_diagnostic.as_ref() {
                             if dg.dice_forgery || dg.dice_contradiction {
@@ -9446,6 +9498,8 @@ async fn start_turn(
                                     let text = format!("{} {}", stored.kind, stored.summary);
                                     let eb = eb.clone();
                                     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
                                         .timeout(StdDuration::from_secs(10))
                                         .build()
                                         .unwrap_or_default();
@@ -9777,6 +9831,8 @@ async fn start_turn(
                         dice_forgery,
                         dice_contradiction,
                         dice_reasons: dice_reasons.clone(),
+                        hallu_names: Vec::new(),
+                        conflicts: Vec::new(),
                     });
                 }
 
@@ -10236,6 +10292,8 @@ async fn stop_turn(
             dice_forgery: false,
             dice_contradiction: false,
             dice_reasons: Vec::new(),
+            hallu_names: Vec::new(),
+            conflicts: Vec::new(),
         });
         tracing::info!(%session_id, run_id = %body.run_id, turn, duration_ms, "st turn stopped (diagnostic recorded)");
         if let Err(e) = state.sessions_tavern.save(sess) {
@@ -11587,6 +11645,10 @@ async fn put_relationships(State(state): State<AppState>, headers: HeaderMap, Pa
     // body: {characterId, bondDelta, trustDelta, fixation, stance, withUser}
     let cid = body.get("characterId").or_else(|| body.get("character_id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
     if cid.is_empty() { return bad_request("ST_REL_BAD","need characterId") }
+    // [关系自检] 空角色拒绝（吞噬 AI-Reader-V2 profile_quality 口径：脏数据不进库）
+    if cid.trim().is_empty() {
+        return map_core_err(kaleido_core::CoreError::BadRequest("characterId required".into()));
+    }
     let bond_d = body.get("bondDelta").or_else(|| body.get("bond_delta")).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
     let trust_d = body.get("trustDelta").or_else(|| body.get("trust_delta")).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
     // [偏好加权] event 文本命中 likes/dislikes 则 bond 放大 1.5x
@@ -12170,12 +12232,32 @@ async fn run_event_extract(
     );
     let user = format!("玩家输入：{}\n\n本回合正文：{}\n\n在场角色 id：{}", user_msg, full_text.chars().take(3000).collect::<String>(), present.join(","));
     let raw = call_llm_extract_with(appst, base, key, model, &sys, &user).await?;
-    let v: serde_json::Value = crate::llm_stream::extract_json_value(&raw)
-        .or_else(|| serde_json::from_str(&raw).ok())
-        .ok_or_else(|| "extract json parse failed".to_string())?;
+    let mut v: Option<serde_json::Value> = crate::llm_stream::extract_json_value(&raw)
+        .or_else(|| serde_json::from_str(&raw).ok());
+    // [waidrin ②] schema 拒收返工：parse 失败重试一次
+    if v.is_none() {
+        tracing::warn!(%session_id, turn, "st event_extract bg: json parse failed, retry once");
+        let retry_sys = "你是剧情事件提取器。只输出 JSON（无 markdown 包裹），七个数组键必须全有（gives/promises/growth/bond/needs/journal/checks），无事件则为空数组。不要输出任何解释文字。";
+        if let Ok(retry_raw) = call_llm_extract_with(appst, base, key, model, retry_sys, &user).await {
+            v = crate::llm_stream::extract_json_value(&retry_raw)
+                .or_else(|| serde_json::from_str(&retry_raw).ok());
+        }
+    }
+    let v: serde_json::Value = v.ok_or_else(|| "extract json parse failed".to_string())?;
     let mut sess = store.get(session_id).map_err(|e| e.to_string())?;
     let sid = sess.session_id.clone();
     let mut dirty = false;
+    // [幻觉过滤] grounding 语料 = 本回合正文+玩家输入（吞噬 AI-Reader-V2 hallucination_filter 口径）
+    let corpus = format!("{user_msg}\n{full_text}");
+    let roster: Vec<String> = pack_chars.iter().map(|(_, n)| n.clone()).collect();
+    let mut hallu: Vec<String> = Vec::new();
+    // [waidrin ①] ** 引用=强 grounding 证据（扫正文 bold 引用，命中即算登场实锤）
+    let bold_refs = scan_bold_refs(&corpus);
+    let grounded = |name: &str| -> bool {
+        roster.iter().any(|n| n == name)
+            || bold_refs.iter().any(|n| n == name)
+            || kaleido_core::grounding::grounded_in(name, &[], &corpus)
+    };
     {
         let counts = ["gives","promises","growth","bond","needs","journal","checks"].iter()
             .map(|k| format!("{}={}", k, v.get(k).and_then(|x| x.as_array()).map(|a| a.len()).unwrap_or(0)))
@@ -12293,6 +12375,7 @@ async fn run_event_extract(
                 g.get("strength").and_then(|x| x.as_f64()).unwrap_or(0.6) as f32,
             );
             if ch_name.is_empty() || ev.is_empty() { continue; }
+            if !grounded(ch_name) { if !hallu.contains(&ch_name.to_string()) { hallu.push(ch_name.to_string()); } continue; }
             let cid = resolve_cid(pack_chars, |k| sess.growth.rings.iter().any(|r| r.character == k), ch_name);
             sess.growth.strengthen(&cid, ev, st, turn);
             dirty = true;
@@ -12311,6 +12394,7 @@ async fn run_event_extract(
                 b.get("trustDelta").or_else(|| b.get("trustChange")).or_else(|| b.get("trust")).and_then(|x| x.as_i64()).unwrap_or_else(|| if chg != 0 { chg * 6 / 10 } else { 0 }).clamp(-10, 10) as i32,
             );
             if ch_name.is_empty() || (bd == 0 && td == 0) { continue; }
+            if !grounded(ch_name) { if !hallu.contains(&ch_name.to_string()) { hallu.push(ch_name.to_string()); } continue; }
             let cid = resolve_cid(pack_chars, |k| sess.relationships.contains_key(k), ch_name);
             let entry = sess.relationships.entry(cid.clone()).or_default();
             let (bc, tc) = entry.apply_delta(bd, td);
@@ -12394,9 +12478,34 @@ async fn run_event_extract(
             if !live.milestones.iter().any(|x| x.character == m.character && x.label == m.label) { live.milestones.push(m); }
         }
         for (cid, n) in want_needs { live.needs.insert(cid, n); }
+        // [冲突三维] milestones bond 时间线 flip-flop + 死亡弱信号（吞噬 AI-Reader-V2 conflict_detector 口径）
+        {
+            use std::collections::HashMap;
+            let mut tl: HashMap<(String, String), Vec<(i64, String)>> = HashMap::new();
+            for m in &live.milestones {
+                if m.kind == "bond" || m.kind == "trust" {
+                    tl.entry((m.character.clone(), m.kind.clone())).or_default().push((m.turn as i64, m.label.clone()));
+                }
+            }
+            let tls: Vec<((String, String), Vec<(i64, String)>)> = tl.into_iter()
+                .map(|((ch, _k), v)| ((ch.clone(), ch), v))
+                .collect();
+            let mut conf: Vec<String> = kaleido_core::grounding::check_relation_flip(&tls)
+                .into_iter().map(|c| c.description).collect();
+            for cid in live.present_character_ids.iter().chain(live.focus_character_id.as_ref()) {
+                if full_text.contains("死") || full_text.contains("亡") || full_text.contains("尸体") {
+                    conf.push(format!("死亡信号：{cid} 在场且本回合出现死亡描写（待核实）"));
+                    break;
+                }
+            }
+            if let Some(dg) = live.last_turn_diagnostic.as_mut() {
+                dg.hallu_names = hallu.clone();
+                dg.conflicts = conf;
+            }
+        }
         Ok(())
     }).map_err(|e| e.to_string())?;
-    tracing::info!(%session_id, turn, "st event_extract bg: wrote events");
+    tracing::info!(%session_id, turn, hallu_n = hallu.len(), "st event_extract bg: wrote events");
     Ok(())
 }
 
@@ -12407,6 +12516,8 @@ async fn call_llm_extract_with(appst: &kaleido_core::AppStateStore, base: Option
         return Err("LLM not configured".into());
     }
     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(std::time::Duration::from_secs(60))
         .build()
         .map_err(|e| e.to_string())?;
@@ -12447,6 +12558,8 @@ async fn call_llm_nonstream(state: &AppState, system: &str, user: &str) -> Resul
         llm.model
     };
     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())?;
@@ -13444,6 +13557,18 @@ pub(crate) fn sweep_orphan_runs(state: &AppState) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ─── scan_bold_refs `**Name**` 引用追踪单测（waidrin ①） ───────────────
+    #[test]
+    fn bold_refs_basic() {
+        let r = scan_bold_refs("**沈棠**站在雨中，看着**林晚的**衣袖。");
+        assert_eq!(r, vec!["沈棠".to_string(), "林晚".to_string()]);
+        // 去重 + 短名过滤
+        let r2 = scan_bold_refs("**沈棠**又见**沈棠**，**阿**跑了。");
+        assert_eq!(r2, vec!["沈棠".to_string()]);
+        // 无包裹不命中
+        assert!(scan_bold_refs("沈棠站在雨中").is_empty());
+    }
 
     // ─── lore_trigger_ok Hook 条件触发单测（loreweaver ⑤） ──────────────────
     #[test]

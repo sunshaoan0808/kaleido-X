@@ -233,6 +233,25 @@ Python 自托管 AI 桌游主持人（"AI 讲故事，代码管分数"：骰子/
 | Keeper/Player 双面（KP 全知/玩家过滤） | `kp_tools_knowledge.py` | `keeper_note` 列隔离（prompt 零注入）+ 🎩 真相展示 |
 | Hook 运行时（预设钩子条件触发） | `hook_runtime.py` | `lore_trigger_ok` 三维（triggerPresent/Item/BondMin）+ 🪝 编辑器 |
 
+### 20. AI-Reader-V2 — [mouseart2025/AI-Reader-V2](https://github.com/mouseart2025/AI-Reader-V2)（AGPL-3.0，思路重实现，未搬代码）
+
+Python 小说分析可视化（角色图谱/地理/时间线/百科）+ 分析质量工程（二审/幻觉过滤/冲突检测/成本）。吞噬第一梯队①②③。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| 幻觉岛过滤（原文 grounding 校验，零 LLM） | `hallucination_filter.py` | `grounding.rs`（别名展开/短名保留）+ 事件提取 grounded 过滤 + hallu 诊断 + 守卫 med + 导演台 👁 |
+| 六维冲突检测（能力/关系/死亡三维先上） | `conflict_detector.py` | `grounding.rs`（A→B→A 回退/flip-flop/死亡复活）+ 诊断 conflicts + 守卫 high/med |
+| Profile 质量检查（自引用拒绝） | `profile_quality_checker.py` | 关系写入自检（空 characterId 拒绝） |
+
+### 21. waidrin — [p-e-w/waidrin](https://github.com/p-e-w/waidrin)（AGPL-3.0，思路重实现，未搬代码）
+
+TypeScript 极简跑团引擎（"约束生成"：LLM 只允许输出合法 JSON，状态机双校验；382★，已弃坑）。吞噬①②。
+
+| 吞噬功能 | 源模块 | Kaleido 落点 |
+|---|---|---|
+| `**Name**` 引用追踪（正则扫+自动补 introduction） | `engine.ts` narrate | `scan_bold_refs`（属格变体/去重）+ 叙事 prompt `**` 约束 + grounding 强证据 |
+| schema 约束+拒收重试（状态双校验） | `schemas.ts`/`engine.ts` | 事件提取 + suggest guard parse 失败短提示重试 1 次 |
+
 ---
 
 ## 一·五、评估过但未落地代码的候选（避免遗漏争议）

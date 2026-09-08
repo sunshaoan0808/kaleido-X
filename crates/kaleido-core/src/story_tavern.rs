@@ -2641,6 +2641,12 @@ pub struct TurnDiagnostic {
     /// 骰审明细（中文）。
     #[serde(default)]
     pub dice_reasons: Vec<String>,
+    /// 幻觉候选名（吞噬 AI-Reader-V2 hallucination_filter 口径：提取名在正文无 grounding）。
+    #[serde(default)]
+    pub hallu_names: Vec<String>,
+    /// 冲突告警（吞噬 AI-Reader-V2 conflict_detector 口径：能力回退/关系反复/死亡复活）。
+    #[serde(default)]
+    pub conflicts: Vec<String>,
 }
 
 fn default_timeline() -> String {

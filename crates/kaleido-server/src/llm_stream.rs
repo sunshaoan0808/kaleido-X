@@ -81,6 +81,8 @@ where
     };
 
     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(StdDuration::from_secs(timeout_secs.max(30)))
         .build()
         .map_err(|e| format!("http client: {e}"))?;
@@ -877,6 +879,8 @@ type StopCb<'a> = &'a (dyn Fn() -> bool + Send + Sync);
 
 fn turn_http_client(timeout_secs: u64) -> Result<reqwest::Client, TurnStreamError> {
     reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(StdDuration::from_secs(timeout_secs.max(30)))
         .build()
         .map_err(|e| TurnStreamError::Connect(format!("http client: {e}")))

@@ -365,6 +365,8 @@ struct SuggestBody {
     instruction: String,
     #[serde(default)]
     source_text: String,
+    #[serde(default)]
+    model: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -608,6 +610,8 @@ async fn call_llm(state: &AppState, system: &str, user: &str) -> Result<String, 
         llm.model
     };
     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())?;
@@ -684,6 +688,18 @@ async fn call_llm_tracked(
     system: &str,
     user: &str,
 ) -> Result<(String, u64, u64), String> {
+    call_llm_tracked_with(state, ws, pid, op, system, user, "").await
+}
+
+async fn call_llm_tracked_with(
+    state: &AppState,
+    ws: &str,
+    pid: &str,
+    op: &str,
+    system: &str,
+    user: &str,
+    model_override: &str,
+) -> Result<(String, u64, u64), String> {
     let llm = state.app_state.resolve_llm(
         state.llm_base.as_deref(),
         state.llm_key.as_deref(),
@@ -692,12 +708,17 @@ async fn call_llm_tracked(
     if llm.base_url.trim().is_empty() || llm.api_key.trim().is_empty() {
         return Err("LLM not configured".into());
     }
-    let model = if llm.model.is_empty() {
+    let mut model = if llm.model.is_empty() {
         state.llm_model.clone()
     } else {
         llm.model
     };
+    if !model_override.trim().is_empty() {
+        model = model_override.trim().to_string();
+    }
     let client = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(4))
+        .pool_max_idle_per_host(2)
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())?;
@@ -935,8 +956,8 @@ async fn create_suggest(
     } else {
         format!("章节《{}》正文：\n{}\n\n待润色选区：\n{}\n\n指令：{}{}{}\n\n请输出润色后文本：", doc.title, doc.content, source_text, instruction, related_block, rules_block)
     };
-    let content = match call_llm(&state, sys, &user).await {
-        Ok(c) => c,
+    let (content, _, _) = match call_llm_tracked_with(&state, &session.workspace_id, &pid, "suggest", sys, &user, &body.model).await {
+        Ok(v) => v,
         Err(e) => return internal("SUGGEST_LLM_FAILED", e),
     };
     let sg_id = format!("sg-{}", &Uuid::new_v4().to_string()[..8]);
@@ -1027,6 +1048,8 @@ const TRIAGE_SYS: &str = "你是改编干预分诊器。把用户指令分成一
 struct TriageBody {
     #[serde(default)]
     instruction: String,
+    #[serde(default)]
+    model: String,
 }
 
 fn rules_path(pid: &str) -> String {
@@ -1065,7 +1088,7 @@ async fn triage_instruction(
         "用户指令：{}\n当前事实：共{}章，总{}字。只输出 JSON。",
         instruction, stats.chapters, stats.total_chars
     );
-    let raw = match call_llm(&state, TRIAGE_SYS, &user).await {
+    let (raw, _, _) = match call_llm_tracked_with(&state, &session.workspace_id, &pid, "triage", TRIAGE_SYS, &user, &body.model).await {
         Ok(r) => r,
         Err(e) => return internal("TRIAGE_LLM_FAILED", e),
     };
@@ -1483,21 +1506,33 @@ async fn run_guard(
     };
     let (issues, mut dims) = match parse_guard(&raw) {
         Ok(v) => v,
-        Err(e) => {
-            let g = ContinuationGuard {
-                suggestion_id: sg.clone(),
-                chapter_version: ch.version_no,
-                content_hash: hash_content(&doc.content),
-                status: "failed".into(),
-                issues: vec![],
-                dimensions: vec![],
-                context_refs: ctx,
-                failure: e,
+        Err(first_err) => {
+            // [waidrin ②] schema 拒收返工：短提示重试一次（DeterminFlow output_validation 同款）
+            let retry_user = format!(
+                "对下面的续写候选做一致性检查。只输出 JSON 数组，不要解释，不要 markdown 包裹。每项必须带 type（character/location/time/world/outline/foreshadow 之一）+ severity（low/medium/high 之一）+ title + description（引用候选原文 10 字以上）：\n{}",
+                doc.content.chars().take(2000).collect::<String>()
+            );
+            let retry_out: Option<(Vec<GuardIssue>, Vec<DimensionScore>)> =
+                if let Ok((retry_raw, _, _)) = call_llm_tracked(&state, &session.workspace_id, &pid, "guard", "你是小说评审，只输出 JSON。", &retry_user).await {
+                    parse_guard(&retry_raw).ok()
+                } else { None };
+            let Some((rissues, rdims)) = retry_out else {
+                let g = ContinuationGuard {
+                    suggestion_id: sg.clone(),
+                    chapter_version: ch.version_no,
+                    content_hash: hash_content(&doc.content),
+                    status: "failed".into(),
+                    issues: vec![],
+                    dimensions: vec![],
+                    context_refs: ctx,
+                    failure: format!("guard parse failed twice: {first_err}"),
+                };
+                let s = serde_json::to_string_pretty(&g).unwrap_or_default();
+                let _ = state.works.mkdir(&session.workspace_id, &format!("projects/{pid}/guards"));
+                let _ = state.works.write_text(&session.workspace_id, &guard_path(&pid, &sg), &s);
+                return Json(json!({"ok": true, "guard": g})).into_response();
             };
-            let s = serde_json::to_string_pretty(&g).unwrap_or_default();
-            let _ = state.works.mkdir(&session.workspace_id, &format!("projects/{pid}/guards"));
-            let _ = state.works.write_text(&session.workspace_id, &guard_path(&pid, &sg), &s);
-            return Json(json!({"ok": true, "guard": g})).into_response();
+            (rissues, rdims)
         }
     };
     // dimensions 为空时重试一次（只问七维评分，低成本补齐）

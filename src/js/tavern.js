@@ -613,6 +613,14 @@ async function stStageRender() {
         out += stStageSec('🎲 骰审', '命中',
           '<div class="st-stage-row"><b>审计</b><span>' + stStageVal(Array.isArray(dr) ? dr.join('；') : dr) + '</span></div>');
       }
+      const hallu = dg.halluNames || dg.hallu_names || [];
+      const conf = dg.conflicts || [];
+      if ((Array.isArray(hallu) && hallu.length) || (Array.isArray(conf) && conf.length)) {
+        let hh = '';
+        if (Array.isArray(hallu) && hallu.length) hh += '<div class="st-stage-row"><b>幻觉候选</b><span>' + stStageVal(hallu.join('、')) + '</span></div>';
+        if (Array.isArray(conf) && conf.length) hh += '<div class="st-stage-row"><b>冲突</b><span>' + stStageVal(conf.join('；')) + '</span></div>';
+        out += stStageSec('👁 幻觉/冲突', (hallu.length || 0) + ' 幻觉 · ' + (conf.length || 0) + ' 冲突', hh);
+      }
       if (dg && dg.humanizeTotal) {
         const col = dg.humanizeTotal >= 45 ? '#7CFC98' : (dg.humanizeTotal >= 35 ? '#ffd166' : '#ff6b6b');
         out += stStageSec('✍️ 去 AI 味', dg.humanizeTotal + '/50 ' + (dg.humanizeGrade || ''),
